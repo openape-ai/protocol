@@ -223,7 +223,7 @@ A DDISA IdP MUST publish a JSON Web Key Set (JWKS) at:
 
 The JWKS MUST include at least one signing key. The key MUST include the `alg`, `use`, and `kid` fields.
 
-> **Note:** The current reference implementation uses `ES256` (ECDSA with P-256). Future versions of this specification may mandate `EdDSA` (Ed25519). Implementations SHOULD be prepared to support both algorithms.
+The signing key MUST use the `EdDSA` algorithm (Ed25519). Implementations MAY additionally support `ES256` (ECDSA with P-256) for backward compatibility, but `EdDSA` is the REQUIRED algorithm for new deployments.
 
 ### 3.5 Required vs Optional Fields
 
@@ -420,9 +420,21 @@ Content-Type: application/json
 }
 ```
 
-The `assertion` field contains the signed JWT (see [Section 5.4](#54-token-format)).
+The response MUST include the `assertion` field containing the signed JWT (see [Section 5.4](#54-token-format)).
 
-The `authorization_details` field is OPTIONAL and follows [RFC 9396](https://datatracker.ietf.org/doc/html/rfc9396) for Rich Authorization Requests.
+The response MUST include the `authorization_details` field ([RFC 9396](https://datatracker.ietf.org/doc/html/rfc9396)). If no authorization details are present, the field MUST be an empty array.
+
+The response MAY include additional standard OAuth 2.0 / OIDC fields for compatibility with existing OIDC client libraries:
+
+| Field | Description |
+|-------|-------------|
+| `id_token` | OIDC ID Token (same content as `assertion`). |
+| `access_token` | OAuth 2.0 access token. |
+| `token_type` | Token type (e.g., `"Bearer"`). |
+| `expires_in` | Token lifetime in seconds. |
+| `refresh_token` | Refresh token (if `offline_access` scope was requested). |
+
+Clients MUST use the `assertion` field for DDISA-specific validation. The additional fields are provided for OIDC interoperability and MAY be ignored by DDISA-only clients.
 
 ### 5.3 Ed25519 Challenge-Response Flow
 
@@ -503,7 +515,7 @@ Agent enrollment (registering new Ed25519 key pairs) is an IdP-specific operatio
 
 Both authentication methods produce a JWT (JSON Web Token) as the assertion. The JWT MUST be signed using a key published in the IdP's JWKS.
 
-> **Note:** The current reference implementation uses `ES256`. Future versions may mandate `EdDSA`. Implementations SHOULD support both and MUST NOT negotiate algorithms — the algorithm is determined by the IdP's signing key.
+The JWT MUST be signed with `EdDSA` (Ed25519). Implementations MAY accept `ES256` for backward compatibility but MUST NOT issue new tokens with `ES256`. The algorithm is determined by the IdP's signing key.
 
 #### 5.4.1 Assertion Claims
 

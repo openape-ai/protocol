@@ -69,7 +69,7 @@ This protocol is designed to work with **any OIDC-compliant Identity Provider**.
      |  (get AuthZ-JWT)       |                        |
      |----------------------->|                        |
      | 10. 200 OK             |                        |
-     |  (authzJWT)            |                        |
+     |  (authz_jwt)           |                        |
      |<-----------------------|                        |
      |                        |                        |
      | 11. POST /{id}/consume |                        |
@@ -319,7 +319,7 @@ Issues an Authorization JWT (AuthZ-JWT) for an approved grant (see [Section 6](#
 
 ```json
 {
-  "authzJWT": "<JWT>",
+  "authz_jwt": "<JWT>",
   "grant": { ... }
 }
 ```
@@ -360,7 +360,7 @@ Verifies an AuthZ-JWT and consumes the grant (for `once` grants). Used by execut
 POST /verify
 ```
 
-Verifies an AuthZ-JWT without consuming the grant.
+Verifies an AuthZ-JWT. Implementations MAY consume `once` grants during verification. Implementations that consume on verify MUST document this behavior in their API documentation.
 
 **Request Body:**
 
