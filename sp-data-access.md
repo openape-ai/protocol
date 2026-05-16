@@ -109,24 +109,35 @@ See [schemas/sp-scope-catalog.json](schemas/sp-scope-catalog.json).
 
 ## 4. Delegated Access Flow
 
+This profile reuses the **existing** Delegation + Grants endpoints
+([delegation.md](delegation.md), [grants.md](grants.md)) verbatim. It adds no
+new endpoint.
+
 ```
 SP2 (Receiver)                User-IdP                 SP1 (Provider)
   │  GET /.well-known/openape.json (SP1) ───────────────────►│  scopes
   │  resolve _ddisa.<user-domain> → User-IdP                 │
-  │  POST /api/grants  type=delegation                        │
-  │    delegate=<sp2-domain> aud=<sp1> scope=⊆catalog ───────►│
-  │                          user consents (any channel §6)   │
-  │  ◄── delegation AuthZ-JWT (iss=user-idp, aud=sp1,         │
-  │       scope, act={sub:<sp2-domain>}, jti) ────────────────│
+  │  POST {idp}/api/delegations                               │
+  │    { delegate:<sp2-domain>, audience:<sp1>,               │
+  │      scopes:⊆catalog }  (only act:'human' may create) ───►│
+  │                          user consents (any channel)      │
+  │  ◄── AuthZ-JWT via {idp}/api/grants/{id}/token            │
+  │       (iss=user-idp, aud=<sp1>, scopes, delegate, jti) ───│
   │  POST {sp1}/api/cli/exchange  subject_token=<that JWT> ──►│ verify (§5)
-  │  ◄────────────── SP1 access token (scope, act) ───────────│
+  │  ◄────────────── SP1 access token (scope) ───────────────│
   │  GET {sp1}/api/...  Authorization: Bearer ───────────────►│ enforce (§5)
 ```
 
-Issuance channel (browser consent screen vs. CLI `apes grant new` vs. a
-standing reusable grant) is a Grants/Delegation concern, not part of this
-profile — see [grants.md](grants.md) §4 and [delegation.md](delegation.md) §6.
-All channels yield the same delegation grant object.
+The delegate identity travels in the grant's `request.delegate` and the
+issued AuthZ-JWT per [delegation.md](delegation.md) — this profile does **not**
+introduce a separate `act` claim. The Provider treats `request.delegate` as
+the actor (a DDISA domain string; no registration — the IdP accepts any
+`delegate`, trust derives from the delegator's consent).
+
+Issuance channel (browser consent screen, CLI `apes grant new`, or a
+**standing grant** that auto-approves matching delegation requests) is a
+Grants/Delegation concern — see [grants.md](grants.md) and
+[delegation.md](delegation.md). All channels yield the same grant object.
 
 ## 5. Provider Conformance
 
@@ -138,29 +149,35 @@ A conforming Provider, on `POST /api/cli/exchange`:
 - **5.2** MUST verify requested `scope ⊆` published catalog (§3.2). The
   Receiver MAY further narrow scope at exchange; it MUST NOT widen it beyond
   the delegation grant.
-- **5.3** MUST carry `scope` and `act` into the minted SP access token.
-  Resource handlers MUST enforce scope (e.g. a `*:read` token MUST be rejected
-  on a mutating route, `403`) **and** existing per-resource RBAC. For data the
-  subject does not solely own (shared/other-user records), the data-owner's
-  authority via their own DDISA + the RBAC matrix governs visibility — the
-  subject's issuer does not.
+- **5.3** MUST carry `scope` (and the delegate identity from
+  `request.delegate`, per [delegation.md](delegation.md), as provenance) into
+  the minted SP access token. Resource handlers MUST enforce scope (e.g. a
+  `*:read` token MUST be rejected on a mutating route, `403`) **and** existing
+  per-resource RBAC. For data the subject does not solely own (shared/other-
+  user records), the data-owner's authority via their own DDISA + the RBAC
+  matrix governs visibility — the subject's issuer does not. When the
+  `subject_token` carries **no** `scope` (first-party `apes login`, not a
+  delegation), the minted token is unrestricted exactly as before
+  (behaviour-preserving).
 - **5.4** MUST NOT issue long-lived access tokens for delegated access (see
   §6). The 30-day CLI-token TTL used for first-party CLI sessions does not
   apply here.
 
 ## 6. Consume Semantics
 
-The delegation grant carries a `consume` property (Grants Protocol):
+There is **no new `consume` field**. The two consume modes map onto existing
+Grants Protocol mechanisms:
 
-| `consume` | Meaning | Revocation latency | IdP coupling on data path |
-|-----------|---------|--------------------|---------------------------|
-| `reusable` | Default for data access. Provider mints a **short-TTL** access token (RECOMMENDED ≤ 15 min, no auto-refresh without a still-valid grant). Receiver re-exchanges on expiry; a revoked grant fails the next exchange. | ≤ token TTL | none (loosely coupled — RECOMMENDED) |
-| `one_shot` | Single-use, replay-proof (the `escapes`/elevation pattern). Provider MUST call the IdP `/consume` (grants.md) on every use. | immediate | per use (justified for high-stakes) |
+| Mode | Existing mechanism | Revocation latency | IdP coupling on data path |
+|------|--------------------|--------------------|---------------------------|
+| **reusable** (default for data access) | A **standing grant** (`grants.md`, `type:'standing'`, `status:'approved'`) that auto-approves matching delegation requests. The Provider mints a short-TTL access token (RECOMMENDED ≤ 15 min, no auto-refresh without a still-valid grant); the Receiver re-exchanges on expiry. A revoked/deleted standing grant fails the next exchange. | ≤ token TTL | none (loosely coupled — RECOMMENDED) |
+| **one_shot** (high-stakes, the `escapes`/elevation pattern) | A normal delegation grant consumed via `POST {idp}/api/grants/{id}/consume` (`grants.md`); `used_at` makes it single-use, replay-proof. The Provider calls `/consume` on every use. | immediate | per use (justified for high-stakes) |
 
-A Provider MAY require `one_shot` for specific high-risk scopes; otherwise
-`reusable` with short TTL is the default. Revocation in both cases is the user
-disabling the grant at their IdP — no Provider-side allowlist or token
-blacklist is introduced.
+A Provider MAY require the one_shot path (mandatory `/consume`) for specific
+high-risk scopes; otherwise the reusable path (standing grant + short-TTL
+token) is the default. Revocation in both cases is the user revoking the grant
+at their IdP (`POST /api/grants/{id}/revoke` or `DELETE /api/delegations/{id}`)
+— no Provider-side allowlist or token blacklist is introduced.
 
 ## 7. Security Considerations
 
