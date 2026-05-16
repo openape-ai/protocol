@@ -11,6 +11,7 @@ DDISA is an open protocol for decentralized identity on the web. It uses DNS TXT
 | [core.md](core.md) | **DDISA Core** — DNS discovery, IdP/SP metadata, authentication flows (WebAuthn + Ed25519), token format, error responses |
 | [grants.md](grants.md) | **Grants Protocol** — Grant-based authorization REST API, AuthZ-JWT, polling, pagination. Works with any OIDC IdP. |
 | [delegation.md](delegation.md) | **Delegation Protocol** — User-to-user delegation of rights at Service Providers. Builds on Grants. |
+| [sp-data-access.md](sp-data-access.md) | **SP Data Access Profile** — one SP reads a user's data from another, user-consented, no registration. Profile over Grants + Delegation. |
 
 ## Schemas
 
@@ -25,6 +26,7 @@ Machine-readable [JSON Schema](https://json-schema.org/) (Draft 2020-12) definit
 | [grant-request.json](schemas/grant-request.json) | grants.md Section 3.4 |
 | [authz-jwt-claims.json](schemas/authz-jwt-claims.json) | grants.md Section 6 |
 | [delegation.json](schemas/delegation.json) | delegation.md Section 3 |
+| [sp-scope-catalog.json](schemas/sp-scope-catalog.json) | sp-data-access.md Section 3 |
 | [error.json](schemas/error.json) | core.md Section 6 |
 
 ## Examples
@@ -61,7 +63,7 @@ Implementations can claim compliance at three levels:
 
 ## Reference Implementation
 
-The reference implementation is [OpenAPE](https://github.com/openape-ai/openape), an open-source monorepo containing:
+The reference implementation is [OpenApe](https://github.com/openape-ai/openape), an open-source monorepo containing:
 
 - `@openape/core` — DNS resolution, types, constants, JWT utilities
 - `@openape/auth` — SP and IdP authentication logic
