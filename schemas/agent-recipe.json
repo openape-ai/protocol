@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openape.ai/protocol/schemas/agent-recipe.json",
+  "title": "OpenApe Agent Recipe Manifest",
+  "description": "ape-agent.yaml — the description file of an Agent Recipe. See agent-recipe.md Section 3.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "kind", "intent"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Recipe identifier.",
+      "minLength": 1
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["agent"],
+      "description": "v1: only `agent` (LLM agent with shipped tools)."
+    },
+    "intent": {
+      "type": "string",
+      "description": "Prepared system prompt / task run each schedule tick. May contain {{param}} interpolation.",
+      "minLength": 1
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "Declared credential placeholder env-var names the recipe consumes. No secret values.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["env"],
+        "properties": {
+          "env": {
+            "type": "string",
+            "description": "Placeholder env-var name, e.g. BLUESKY_APP_PASSWORD.",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "description": {
+            "type": "string",
+            "description": "Human-readable; shown on the consent prompt."
+          },
+          "prefer": {
+            "type": "string",
+            "enum": ["proxy", "local"],
+            "description": "Declarative delivery hint only. Platform decides actual delivery."
+          }
+        }
+      }
+    },
+    "params": {
+      "type": "array",
+      "description": "Typed deploy-time parameters, interpolated into intent/tools/schedules.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "type"],
+        "properties": {
+          "name": { "type": "string", "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$" },
+          "type": { "type": "string", "enum": ["string", "number", "boolean", "string[]"] },
+          "required": { "type": "boolean", "default": false },
+          "default": {},
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "schedules": {
+      "type": "array",
+      "description": "Cron expressions. Empty/absent = on-demand only.",
+      "items": { "type": "string" }
+    },
+    "user_addendum": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether a runtime-editable free-text behavioural layer is allowed."
+    },
+    "tools": {
+      "type": "array",
+      "description": "Tool/entrypoint manifest the agent may invoke (paths under tools/).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "entrypoint"],
+        "properties": {
+          "name": { "type": "string" },
+          "entrypoint": { "type": "string", "description": "Path under tools/, e.g. tools/bluesky.ts#getTimeline" },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}

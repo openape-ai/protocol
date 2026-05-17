@@ -12,6 +12,7 @@ DDISA is an open protocol for decentralized identity on the web. It uses DNS TXT
 | [grants.md](grants.md) | **Grants Protocol** — Grant-based authorization REST API, AuthZ-JWT, polling, pagination. Works with any OIDC IdP. |
 | [delegation.md](delegation.md) | **Delegation Protocol** — User-to-user delegation of rights at Service Providers. Builds on Grants. |
 | [sp-data-access.md](sp-data-access.md) | **SP Data Access Profile** — one SP reads a user's data from another, user-consented, no registration. Profile over Grants + Delegation. |
+| [agent-recipe.md](agent-recipe.md) | **Agent Recipe** — one-step deployable scheduled, capability-using agent from a git repo. Capabilities are brokered grants. |
 
 ## Schemas
 
@@ -27,6 +28,7 @@ Machine-readable [JSON Schema](https://json-schema.org/) (Draft 2020-12) definit
 | [authz-jwt-claims.json](schemas/authz-jwt-claims.json) | grants.md Section 6 |
 | [delegation.json](schemas/delegation.json) | delegation.md Section 3 |
 | [sp-scope-catalog.json](schemas/sp-scope-catalog.json) | sp-data-access.md Section 3 |
+| [agent-recipe.json](schemas/agent-recipe.json) | agent-recipe.md Section 3 |
 | [error.json](schemas/error.json) | core.md Section 6 |
 
 ## Examples
