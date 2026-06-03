@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://ddisa.org/schemas/openid-configuration-extensions.json",
-  "title": "DDISA & OpenAPE OIDC Discovery Extensions",
-  "description": "Custom fields extending the standard OIDC Discovery document for DDISA and OpenAPE protocols.",
+  "title": "DDISA & OpenApe OIDC Discovery Extensions",
+  "description": "Custom fields extending the standard OIDC Discovery document for DDISA and OpenApe protocols.",
   "type": "object",
   "properties": {
     "ddisa_version": {

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openape.org/schemas/grant.json",
-  "title": "OpenAPE Grant",
+  "title": "OpenApe Grant",
   "description": "A grant representing a permission request and its lifecycle state.",
   "type": "object",
   "properties": {

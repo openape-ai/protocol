@@ -202,9 +202,9 @@ The following custom fields extend the standard OIDC Discovery document for DDIS
 | `ddisa_agent_challenge_endpoint` | OPTIONAL | string | Endpoint for Ed25519 challenge requests. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
 | `ddisa_agent_authenticate_endpoint` | OPTIONAL | string | Endpoint for Ed25519 authentication. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
 
-### 3.3 OpenAPE Extensions (`openape_*` Namespace)
+### 3.3 OpenApe Extensions (`openape_*` Namespace)
 
-The following fields are part of the OpenAPE ecosystem and are independent of DDISA. They signal support for the Grants and Delegation protocols (see [grants.md](grants.md) and [delegation.md](delegation.md)).
+The following fields are part of the OpenApe ecosystem and are independent of DDISA. They signal support for the Grants and Delegation protocols (see [grants.md](grants.md) and [delegation.md](delegation.md)).
 
 | Field | Status | Type | Description |
 |-------|--------|------|-------------|
@@ -313,7 +313,7 @@ SP metadata MAY include DDISA-specific fields, prefixed with `ddisa_`:
 
 ### 4.6 Migration from Legacy Format
 
-| RFC 7591 Field | Legacy OpenAPE Field | Notes |
+| RFC 7591 Field | Legacy OpenApe Field | Notes |
 |----------------|---------------------|-------|
 | `client_name` | `name` | Renamed to standard |
 | `contacts` | `contact` | Changed from string to string[] |
