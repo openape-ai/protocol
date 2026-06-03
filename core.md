@@ -197,7 +197,7 @@ The following custom fields extend the standard OIDC Discovery document for DDIS
 | Field | Status | Type | Description |
 |-------|--------|------|-------------|
 | `ddisa_version` | REQUIRED | string | DDISA protocol version. MUST be `"1.0"`. |
-| `ddisa_auth_methods_supported` | REQUIRED | string[] | Supported authentication methods. Values: `"webauthn"`, `"ed25519"`. |
+| `ddisa_auth_methods_supported` | REQUIRED | string[] | Supported authentication methods. Values: `"webauthn"`, `"ed25519"`, `"ssh-key"`. |
 | `ddisa_client_metadata_uri` | OPTIONAL | string | URL pointing to the IdP's own client metadata document (per [RFC 7591](https://datatracker.ietf.org/doc/html/rfc7591)). Typically `/.well-known/oauth-client-metadata`. |
 | `ddisa_agent_challenge_endpoint` | OPTIONAL | string | Endpoint for Ed25519 challenge requests. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
 | `ddisa_agent_authenticate_endpoint` | OPTIONAL | string | Endpoint for Ed25519 authentication. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |

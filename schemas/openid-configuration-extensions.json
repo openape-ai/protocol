@@ -14,7 +14,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "enum": ["webauthn", "ed25519"]
+        "enum": ["webauthn", "ed25519", "ssh-key"]
       },
       "minItems": 1,
       "description": "Supported authentication methods."
