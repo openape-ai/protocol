@@ -197,14 +197,14 @@ The following custom fields extend the standard OIDC Discovery document for DDIS
 | Field | Status | Type | Description |
 |-------|--------|------|-------------|
 | `ddisa_version` | REQUIRED | string | DDISA protocol version. MUST be `"1.0"`. |
-| `ddisa_auth_methods_supported` | REQUIRED | string[] | Supported authentication methods. Values: `"webauthn"`, `"ed25519"`. |
+| `ddisa_auth_methods_supported` | REQUIRED | string[] | Supported authentication methods. Values: `"webauthn"`, `"ed25519"`, `"ssh-key"`. |
 | `ddisa_client_metadata_uri` | OPTIONAL | string | URL pointing to the IdP's own client metadata document (per [RFC 7591](https://datatracker.ietf.org/doc/html/rfc7591)). Typically `/.well-known/oauth-client-metadata`. |
-| `ddisa_agent_challenge_endpoint` | OPTIONAL | string | Endpoint for Ed25519 challenge requests. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
-| `ddisa_agent_authenticate_endpoint` | OPTIONAL | string | Endpoint for Ed25519 authentication. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
+| `ddisa_auth_challenge_endpoint` | OPTIONAL | string | Endpoint for Ed25519 challenge requests. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
+| `ddisa_auth_authenticate_endpoint` | OPTIONAL | string | Endpoint for Ed25519 authentication. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
 
-### 3.3 OpenAPE Extensions (`openape_*` Namespace)
+### 3.3 OpenApe Extensions (`openape_*` Namespace)
 
-The following fields are part of the OpenAPE ecosystem and are independent of DDISA. They signal support for the Grants and Delegation protocols (see [grants.md](grants.md) and [delegation.md](delegation.md)).
+The following fields are part of the OpenApe ecosystem and are independent of DDISA. They signal support for the Grants and Delegation protocols (see [grants.md](grants.md) and [delegation.md](delegation.md)).
 
 | Field | Status | Type | Description |
 |-------|--------|------|-------------|
@@ -255,8 +255,8 @@ The signing key MUST use the `EdDSA` algorithm (Ed25519). Implementations MAY ad
   "ddisa_version": "1.0",
   "ddisa_auth_methods_supported": ["webauthn", "ed25519"],
   "ddisa_client_metadata_uri": "https://id.example.com/.well-known/oauth-client-metadata",
-  "ddisa_agent_challenge_endpoint": "https://id.example.com/api/agent/challenge",
-  "ddisa_agent_authenticate_endpoint": "https://id.example.com/api/agent/authenticate",
+  "ddisa_auth_challenge_endpoint": "https://id.example.com/api/agent/challenge",
+  "ddisa_auth_authenticate_endpoint": "https://id.example.com/api/agent/authenticate",
   "openape_grants_endpoint": "https://id.example.com/api/grants",
   "openape_delegations_endpoint": "https://id.example.com/api/delegations",
   "openape_grant_types_supported": ["once", "timed", "always"],
@@ -313,7 +313,7 @@ SP metadata MAY include DDISA-specific fields, prefixed with `ddisa_`:
 
 ### 4.6 Migration from Legacy Format
 
-| RFC 7591 Field | Legacy OpenAPE Field | Notes |
+| RFC 7591 Field | Legacy OpenApe Field | Notes |
 |----------------|---------------------|-------|
 | `client_name` | `name` | Renamed to standard |
 | `contacts` | `contact` | Changed from string to string[] |
@@ -451,7 +451,7 @@ The authenticating entity MUST have:
 **Request:**
 
 ```
-POST {ddisa_agent_challenge_endpoint}
+POST {ddisa_auth_challenge_endpoint}
 Content-Type: application/json
 
 {
@@ -481,7 +481,7 @@ The agent signs the challenge with its Ed25519 private key and submits:
 **Request:**
 
 ```
-POST {ddisa_agent_authenticate_endpoint}
+POST {ddisa_auth_authenticate_endpoint}
 Content-Type: application/json
 
 {

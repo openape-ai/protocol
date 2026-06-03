@@ -1,4 +1,4 @@
-# OpenAPE Grants Protocol
+# OpenApe Grants Protocol
 
 **Version:** 1.0-draft
 **Status:** Draft
@@ -7,7 +7,7 @@
 
 ## Abstract
 
-The OpenAPE Grants Protocol defines a grant-based authorization mechanism for OIDC-compatible Identity Providers. It enables Service Providers and agents to request, manage, and consume fine-grained permissions through a REST API. This protocol is independent of DDISA — it works with any OIDC-compliant IdP that implements the grants endpoints.
+The OpenApe Grants Protocol defines a grant-based authorization mechanism for OIDC-compatible Identity Providers. It enables Service Providers and agents to request, manage, and consume fine-grained permissions through a REST API. This protocol is independent of DDISA — it works with any OIDC-compliant IdP that implements the grants endpoints.
 
 ## Table of Contents
 
@@ -90,7 +90,8 @@ An IdP that supports the Grants Protocol MUST advertise its support via the OIDC
 |-------|--------|------|-------------|
 | `openape_grants_endpoint` | REQUIRED | string | Base URL for the Grants REST API. All API paths in [Section 4](#4-rest-api) are relative to this URL. |
 | `openape_grant_types_supported` | REQUIRED | string[] | Supported grant types. MUST include at least one of: `"once"`, `"timed"`, `"always"`. |
-| `openape_grant_categories_supported` | OPTIONAL | string[] | Supported grant categories. Values: `"command"`, `"delegation"`. Default: `["command"]`. |
+| `openape_grant_categories_supported` | OPTIONAL | string[] | Supported grant categories. Values: `"command"`, `"delegation"`, `"standing"`. Default: `["command"]`. |
+| `authorization_details_types_supported` | OPTIONAL | string[] | Supported RFC 9396 authorization detail types. Implementations supporting structured CLI grants SHOULD include `"openape_cli"`. |
 
 **Example:**
 
@@ -98,7 +99,8 @@ An IdP that supports the Grants Protocol MUST advertise its support via the OIDC
 {
   "openape_grants_endpoint": "https://id.example.com/api/grants",
   "openape_grant_types_supported": ["once", "timed", "always"],
-  "openape_grant_categories_supported": ["command", "delegation"]
+  "openape_grant_categories_supported": ["command", "delegation"],
+  "authorization_details_types_supported": ["openape_grant", "openape_cli"]
 }
 ```
 
@@ -113,7 +115,7 @@ A grant represents a permission request and its lifecycle state.
 | Field | Status | Type | Description |
 |-------|--------|------|-------------|
 | `id` | REQUIRED | string | Unique grant identifier (UUID v4). |
-| `type` | OPTIONAL | string | Grant category. One of: `"command"`, `"delegation"`. Default: `"command"`. |
+| `type` | OPTIONAL | string | Grant category. One of: `"command"`, `"delegation"`, `"standing"`. Default: `"command"`. |
 | `request` | REQUIRED | object | The grant request details (see [Section 3.4](#34-grant-request)). |
 | `status` | REQUIRED | string | Current grant status (see [Section 3.3](#33-grant-status)). |
 | `decided_by` | OPTIONAL | string | Identifier of the user who approved or denied the grant. |
@@ -121,6 +123,8 @@ A grant represents a permission request and its lifecycle state.
 | `decided_at` | OPTIONAL | number | Unix timestamp (seconds) when the decision was made. |
 | `expires_at` | OPTIONAL | number | Unix timestamp (seconds) when the grant expires. Set for `timed` grants on approval. |
 | `used_at` | OPTIONAL | number | Unix timestamp (seconds) when the grant was consumed. Set for `once` grants on use. |
+
+A `standing` grant is a pre-authorization (auto-approval policy): instead of authorizing a single action, it approves matching future `command` requests without per-request human interaction. Incoming requests are evaluated against active standing grants; a match yields an approved grant annotated with `decided_by_standing_grant`.
 
 ### 3.2 Grant Types
 
@@ -160,19 +164,62 @@ The `request` object describes what is being requested.
 | Field | Status | Type | Description |
 |-------|--------|------|-------------|
 | `requester` | REQUIRED | string | Identifier of the requesting entity (email or agent ID). |
-| `target` | REQUIRED | string | Target system or resource identifier. |
+| `target_host` | REQUIRED | string | Host or domain where this grant is valid. |
+| `audience` | REQUIRED | string | Service or relying party identifier (e.g. `"apes"`, `"proxy"`). For delegation grants, `"*"` means any SP. |
 | `grant_type` | REQUIRED | string | One of: `"once"`, `"timed"`, `"always"`. |
 | `permissions` | OPTIONAL | string[] | Array of requested permission identifiers. |
+| `authorization_details` | OPTIONAL | object[] | RFC 9396 authorization details. For wrapped CLI grants, entries with `type: "openape_cli"` are authoritative and `permissions` SHOULD be derived from them. |
 | `command` | OPTIONAL | string[] | Plaintext command array (for display in approval UI). |
 | `cmd_hash` | OPTIONAL | string | SHA-256 hash of the command for verification. Format: `SHA-256:<hex-encoded-hash>`. Input: the JSON-serialized `command` array. |
+| `execution_context` | OPTIONAL | object | Execution binding for wrapped CLI grants, including `argv`, `argv_hash`, adapter identity, and adapter digest. |
 | `duration` | CONDITIONAL | number | Duration in seconds. REQUIRED when `grant_type` is `"timed"`. |
 | `reason` | OPTIONAL | string | Human-readable reason for the request. |
+| `run_as` | OPTIONAL | string | Execute as this user identity. |
 | `delegator` | OPTIONAL | string | Who is being acted on behalf of (delegation grants only). |
 | `delegate` | OPTIONAL | string | Who is allowed to act (delegation grants only). |
-| `audience` | OPTIONAL | string | At which SP the delegation is valid (delegation grants only). `"*"` for any SP. |
 | `scopes` | OPTIONAL | string[] | Allowed actions under the delegation (delegation grants only). |
 
-### 3.5 JSON Schema Reference
+### 3.5 Structured CLI Authorization Details
+
+An `authorization_details` entry with `type: "openape_cli"` represents a wrapped CLI action that has been resolved into structured resource/action form.
+
+| Field | Status | Type | Description |
+|-------|--------|------|-------------|
+| `type` | REQUIRED | string | MUST be `"openape_cli"`. |
+| `cli_id` | REQUIRED | string | Identifier of the wrapped CLI (for example `gh`, `az`, or `exo`). |
+| `operation_id` | REQUIRED | string | Adapter-defined operation identifier. |
+| `resource_chain` | REQUIRED | object[] | Ordered resource path. Each entry contains `resource` and optional `selector` map. Missing selector means wildcard at that level. |
+| `action` | REQUIRED | string | Exact action being requested, e.g. `list`, `read`, `create`, `delete`. |
+| `permission` | REQUIRED | string | Canonical permission string derived from `cli_id`, `resource_chain`, and `action`. |
+| `display` | REQUIRED | string | Human-readable request summary for approval UI. |
+| `risk` | REQUIRED | string | One of: `low`, `medium`, `high`, `critical`. |
+| `constraints.exact_command` | OPTIONAL | boolean | If true, the approval is bound to the exact `execution_context.argv_hash`. |
+
+Canonical permission format:
+
+`<cli>.<resource>[<selector>].<child>[<selector>]#<action>`
+
+Examples:
+
+- `gh.owner[login=openape].repo[*]#list`
+- `az.organization[url=https://dev.azure.com/acme].project[name=portal].repo[name=api].pull-request[*]#list`
+- `exo.account[name=current].dns-domain[name=example.com].dns-record[*]#list`
+
+### 3.6 Execution Context
+
+`execution_context` binds a structured CLI grant to the adapter and argv used when the request was created.
+
+| Field | Status | Type | Description |
+|-------|--------|------|-------------|
+| `argv` | REQUIRED for exact CLI grants | string[] | Full argv including the wrapped executable. |
+| `argv_hash` | REQUIRED for exact CLI grants | string | SHA-256 over the JSON-serialized `argv`. Format: `SHA-256:<hex>`. |
+| `adapter_id` | REQUIRED for structured CLI grants | string | Adapter identifier used to resolve the command. |
+| `adapter_version` | REQUIRED for structured CLI grants | string | Adapter schema/version identifier. |
+| `adapter_digest` | REQUIRED for structured CLI grants | string | SHA-256 digest of the adapter file. Format: `SHA-256:<hex>`. |
+| `resolved_executable` | REQUIRED for structured CLI grants | string | Executable that will be invoked after grant validation. |
+| `context_bindings` | OPTIONAL | object | Captured binding values used while resolving the adapter rule. |
+
+### 3.7 JSON Schema Reference
 
 Machine-readable schemas for the Grant data model are available in [schemas/grant.json](schemas/grant.json) and [schemas/grant-request.json](schemas/grant-request.json).
 
@@ -194,10 +241,14 @@ Creates a new grant with status `pending`.
 
 **Validation Rules:**
 
-- `requester`, `target`, and `grant_type` are REQUIRED.
+- `requester`, `target_host`, `audience`, and `grant_type` are REQUIRED.
 - `grant_type` MUST be one of the values in `openape_grant_types_supported`.
 - If `grant_type` is `"timed"`, `duration` MUST be present and positive.
 - If the request is authenticated via an agent token, the `requester` field MUST be set to the authenticated agent's identity.
+- If `authorization_details` contains `openape_cli` entries, each `permission` MUST match the canonical form derived from `cli_id`, `resource_chain`, and `action`.
+- If `authorization_details` contains `openape_cli` entries, implementations SHOULD derive `permissions` from those details instead of trusting client-provided strings.
+- If `execution_context.argv` is present, implementations SHOULD recompute `execution_context.argv_hash` server-side.
+- If `command` is present, implementations SHOULD recompute `cmd_hash` server-side.
 
 **Response:** `201 Created` with the full Grant object.
 
@@ -225,7 +276,7 @@ Returns grants visible to the authenticated user.
 **Visibility Rules:**
 
 - **Admin:** Sees all grants.
-- **Approver:** Sees grants where they are the target or where they own/approve the requesting agent.
+- **Approver:** Sees grants where they own/approve the requesting agent.
 - **Requester:** Sees their own grants.
 - **Unauthenticated (agent token):** Sees pending grants.
 
@@ -468,7 +519,8 @@ An Authorization JWT (AuthZ-JWT) is a short-lived token that authorizes a specif
 |-------|--------|------|-------------|
 | `iss` | REQUIRED | string | Issuer (IdP URL). |
 | `sub` | REQUIRED | string | Subject (the grant requester). |
-| `aud` | REQUIRED | string | Audience (the grant target). |
+| `aud` | REQUIRED | string | Audience — the service or relying party identifier (e.g. `"apes"`, `"proxy"`). |
+| `target_host` | REQUIRED | string | The host or domain where this grant is valid. |
 | `iat` | REQUIRED | number | Issued-at timestamp (Unix seconds). |
 | `exp` | REQUIRED | number | Expiration timestamp (Unix seconds). |
 | `jti` | REQUIRED | string | JWT ID (UUID v4). |
@@ -476,8 +528,12 @@ An Authorization JWT (AuthZ-JWT) is a short-lived token that authorizes a specif
 | `grant_type` | REQUIRED | string | The grant type (`once`, `timed`, `always`). |
 | `approval` | OPTIONAL | string | The approval type (mirrors `grant_type`). |
 | `permissions` | OPTIONAL | string[] | Granted permissions array. |
+| `scope` | OPTIONAL | string[] | Granted scopes (delegation grants). Mirrors the request `scopes`. |
+| `delegate` | OPTIONAL | string | The delegate identity (delegation grants only). |
+| `authorization_details` | OPTIONAL | object[] | RFC 9396 authorization details carried into the token. For wrapped CLI grants, `openape_cli` entries are authoritative. |
 | `cmd_hash` | OPTIONAL | string | Command hash for verification. |
 | `command` | OPTIONAL | string[] | Plaintext command array. |
+| `execution_context` | OPTIONAL | object | Wrapped CLI execution binding including `argv`, `argv_hash`, adapter identity, and adapter digest. |
 | `decided_by` | OPTIONAL | string | Who approved the grant. |
 | `nonce` | OPTIONAL | string | Request-specific nonce. |
 | `run_as` | OPTIONAL | string | Execute command as this user identity. |
@@ -503,6 +559,12 @@ The AuthZ-JWT MUST be signed with the IdP's signing key (the same key used for a
 | `once` | Grant transitions to `used`. The JWT becomes invalid for future consume calls. |
 | `timed` | Grant remains `approved`. The JWT can be consumed multiple times until `expires_at`. |
 | `always` | Grant remains `approved`. The JWT can be consumed indefinitely. A new JWT can be issued when the current one expires. |
+
+For wrapped CLI grants using `authorization_details` with `type: "openape_cli"`, executors SHOULD additionally verify:
+
+- the live command resolves to authorization details covered by the granted details
+- `execution_context.adapter_digest` matches the locally selected adapter digest
+- `execution_context.argv_hash` matches the live argv when `constraints.exact_command = true`
 
 ---
 
@@ -575,7 +637,7 @@ Grants Protocol errors follow [RFC 7807](https://datatracker.ietf.org/doc/html/r
 }
 ```
 
-> **Note:** Grant errors use the `https://openape.org/errors/` URI base (not `https://ddisa.org/errors/`), since the Grants Protocol is part of the OpenAPE ecosystem, not DDISA Core.
+> **Note:** Grant errors use the `https://openape.org/errors/` URI base (not `https://ddisa.org/errors/`), since the Grants Protocol is part of the OpenApe ecosystem, not DDISA Core.
 
 ### 9.2 Error Types
 
@@ -609,4 +671,4 @@ Grants Protocol errors follow [RFC 7807](https://datatracker.ietf.org/doc/html/r
 - [RFC 7662](https://datatracker.ietf.org/doc/html/rfc7662) — OAuth 2.0 Token Introspection (conceptual model for introspect)
 - [RFC 9396](https://datatracker.ietf.org/doc/html/rfc9396) — OAuth 2.0 Rich Authorization Requests
 - [DDISA Core Specification](core.md) — Core DNS discovery and authentication protocol
-- [OpenAPE Delegation Protocol](delegation.md) — Delegation extension built on grants
+- [OpenApe Delegation Protocol](delegation.md) — Delegation extension built on grants

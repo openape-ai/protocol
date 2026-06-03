@@ -164,7 +164,7 @@ Content-Type: application/problem+json
 
 ---
 
-## OpenAPE Grants Errors
+## OpenApe Grants Errors
 
 URI base: `https://openape.org/errors/`
 

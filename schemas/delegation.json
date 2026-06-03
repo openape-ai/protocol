@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://openape.org/schemas/delegation.json",
-  "title": "OpenAPE Delegation Grant",
+  "title": "OpenApe Delegation Grant",
   "description": "A delegation grant extending the base grant with delegation-specific fields.",
   "allOf": [
     { "$ref": "grant.json" },

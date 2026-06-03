@@ -1,4 +1,4 @@
-# OpenAPE Delegation Protocol
+# OpenApe Delegation Protocol
 
 **Version:** 1.0-draft
 **Status:** Draft
@@ -7,7 +7,7 @@
 
 ## Abstract
 
-The OpenAPE Delegation Protocol enables users to delegate rights to other users or agents at specific Service Providers. Delegations are modeled as a specialized category of grants (see [grants.md](grants.md)) with additional fields for delegator, delegate, audience, and scopes. This protocol requires the OpenAPE Grants Protocol but is independent of DDISA Core.
+The OpenApe Delegation Protocol enables users to delegate rights to other users or agents at specific Service Providers. Delegations are modeled as a specialized category of grants (see [grants.md](grants.md)) with additional fields for delegator, delegate, audience, and scopes. This protocol requires the OpenApe Grants Protocol but is independent of DDISA Core.
 
 ## Table of Contents
 
@@ -27,9 +27,9 @@ The OpenAPE Delegation Protocol enables users to delegate rights to other users 
 
 The Delegation Protocol allows User A (the delegator) to authorize User B (the delegate) to act on their behalf at Service C (the audience). The delegation is scoped — it specifies which actions the delegate may perform and at which service.
 
-### 1.2 Requires: OpenAPE Grants Protocol
+### 1.2 Requires: OpenApe Grants Protocol
 
-This protocol builds on the [OpenAPE Grants Protocol](grants.md). A delegation is a grant with `type: "delegation"` and additional delegation-specific fields. All grant lifecycle operations (creation, approval, revocation, expiration) apply to delegations.
+This protocol builds on the [OpenApe Grants Protocol](grants.md). A delegation is a grant with `type: "delegation"` and additional delegation-specific fields. All grant lifecycle operations (creation, approval, revocation, expiration) apply to delegations.
 
 DDISA Core is NOT required — any OIDC IdP implementing the Grants Protocol can support delegations.
 
@@ -405,7 +405,7 @@ SPs that cache delegation status SHOULD re-validate delegations periodically (RE
 
 - [RFC 2119](https://datatracker.ietf.org/doc/html/rfc2119) — Key words for use in RFCs
 - [RFC 8693](https://datatracker.ietf.org/doc/html/rfc8693) — OAuth 2.0 Token Exchange (act claim)
-- [OpenAPE Grants Protocol](grants.md) — Grant lifecycle and REST API
+- [OpenApe Grants Protocol](grants.md) — Grant lifecycle and REST API
 
 ### Informative References
 
