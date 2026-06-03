@@ -528,6 +528,8 @@ An Authorization JWT (AuthZ-JWT) is a short-lived token that authorizes a specif
 | `grant_type` | REQUIRED | string | The grant type (`once`, `timed`, `always`). |
 | `approval` | OPTIONAL | string | The approval type (mirrors `grant_type`). |
 | `permissions` | OPTIONAL | string[] | Granted permissions array. |
+| `scope` | OPTIONAL | string[] | Granted scopes (delegation grants). Mirrors the request `scopes`. |
+| `delegate` | OPTIONAL | string | The delegate identity (delegation grants only). |
 | `authorization_details` | OPTIONAL | object[] | RFC 9396 authorization details carried into the token. For wrapped CLI grants, `openape_cli` entries are authoritative. |
 | `cmd_hash` | OPTIONAL | string | Command hash for verification. |
 | `command` | OPTIONAL | string[] | Plaintext command array. |
