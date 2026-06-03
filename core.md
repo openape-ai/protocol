@@ -199,8 +199,8 @@ The following custom fields extend the standard OIDC Discovery document for DDIS
 | `ddisa_version` | REQUIRED | string | DDISA protocol version. MUST be `"1.0"`. |
 | `ddisa_auth_methods_supported` | REQUIRED | string[] | Supported authentication methods. Values: `"webauthn"`, `"ed25519"`, `"ssh-key"`. |
 | `ddisa_client_metadata_uri` | OPTIONAL | string | URL pointing to the IdP's own client metadata document (per [RFC 7591](https://datatracker.ietf.org/doc/html/rfc7591)). Typically `/.well-known/oauth-client-metadata`. |
-| `ddisa_agent_challenge_endpoint` | OPTIONAL | string | Endpoint for Ed25519 challenge requests. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
-| `ddisa_agent_authenticate_endpoint` | OPTIONAL | string | Endpoint for Ed25519 authentication. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
+| `ddisa_auth_challenge_endpoint` | OPTIONAL | string | Endpoint for Ed25519 challenge requests. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
+| `ddisa_auth_authenticate_endpoint` | OPTIONAL | string | Endpoint for Ed25519 authentication. REQUIRED if `"ed25519"` is in `ddisa_auth_methods_supported`. |
 
 ### 3.3 OpenApe Extensions (`openape_*` Namespace)
 
@@ -255,8 +255,8 @@ The signing key MUST use the `EdDSA` algorithm (Ed25519). Implementations MAY ad
   "ddisa_version": "1.0",
   "ddisa_auth_methods_supported": ["webauthn", "ed25519"],
   "ddisa_client_metadata_uri": "https://id.example.com/.well-known/oauth-client-metadata",
-  "ddisa_agent_challenge_endpoint": "https://id.example.com/api/agent/challenge",
-  "ddisa_agent_authenticate_endpoint": "https://id.example.com/api/agent/authenticate",
+  "ddisa_auth_challenge_endpoint": "https://id.example.com/api/agent/challenge",
+  "ddisa_auth_authenticate_endpoint": "https://id.example.com/api/agent/authenticate",
   "openape_grants_endpoint": "https://id.example.com/api/grants",
   "openape_delegations_endpoint": "https://id.example.com/api/delegations",
   "openape_grant_types_supported": ["once", "timed", "always"],
@@ -451,7 +451,7 @@ The authenticating entity MUST have:
 **Request:**
 
 ```
-POST {ddisa_agent_challenge_endpoint}
+POST {ddisa_auth_challenge_endpoint}
 Content-Type: application/json
 
 {
@@ -481,7 +481,7 @@ The agent signs the challenge with its Ed25519 private key and submits:
 **Request:**
 
 ```
-POST {ddisa_agent_authenticate_endpoint}
+POST {ddisa_auth_authenticate_endpoint}
 Content-Type: application/json
 
 {
