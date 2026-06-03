@@ -90,7 +90,7 @@ An IdP that supports the Grants Protocol MUST advertise its support via the OIDC
 |-------|--------|------|-------------|
 | `openape_grants_endpoint` | REQUIRED | string | Base URL for the Grants REST API. All API paths in [Section 4](#4-rest-api) are relative to this URL. |
 | `openape_grant_types_supported` | REQUIRED | string[] | Supported grant types. MUST include at least one of: `"once"`, `"timed"`, `"always"`. |
-| `openape_grant_categories_supported` | OPTIONAL | string[] | Supported grant categories. Values: `"command"`, `"delegation"`. Default: `["command"]`. |
+| `openape_grant_categories_supported` | OPTIONAL | string[] | Supported grant categories. Values: `"command"`, `"delegation"`, `"standing"`. Default: `["command"]`. |
 | `authorization_details_types_supported` | OPTIONAL | string[] | Supported RFC 9396 authorization detail types. Implementations supporting structured CLI grants SHOULD include `"openape_cli"`. |
 
 **Example:**
@@ -115,7 +115,7 @@ A grant represents a permission request and its lifecycle state.
 | Field | Status | Type | Description |
 |-------|--------|------|-------------|
 | `id` | REQUIRED | string | Unique grant identifier (UUID v4). |
-| `type` | OPTIONAL | string | Grant category. One of: `"command"`, `"delegation"`. Default: `"command"`. |
+| `type` | OPTIONAL | string | Grant category. One of: `"command"`, `"delegation"`, `"standing"`. Default: `"command"`. |
 | `request` | REQUIRED | object | The grant request details (see [Section 3.4](#34-grant-request)). |
 | `status` | REQUIRED | string | Current grant status (see [Section 3.3](#33-grant-status)). |
 | `decided_by` | OPTIONAL | string | Identifier of the user who approved or denied the grant. |
@@ -123,6 +123,8 @@ A grant represents a permission request and its lifecycle state.
 | `decided_at` | OPTIONAL | number | Unix timestamp (seconds) when the decision was made. |
 | `expires_at` | OPTIONAL | number | Unix timestamp (seconds) when the grant expires. Set for `timed` grants on approval. |
 | `used_at` | OPTIONAL | number | Unix timestamp (seconds) when the grant was consumed. Set for `once` grants on use. |
+
+A `standing` grant is a pre-authorization (auto-approval policy): instead of authorizing a single action, it approves matching future `command` requests without per-request human interaction. Incoming requests are evaluated against active standing grants; a match yields an approved grant annotated with `decided_by_standing_grant`.
 
 ### 3.2 Grant Types
 
