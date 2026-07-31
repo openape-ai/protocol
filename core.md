@@ -343,12 +343,15 @@ SP metadata MAY include DDISA-specific fields, prefixed with `ddisa_`:
 
 ### 5.1 Overview
 
-DDISA supports two equivalent authentication methods. Neither method is privileged over the other — both produce the same assertion JWT format. The choice of method depends on the authenticating entity's capabilities:
+DDISA supports three equivalent authentication methods. No method is privileged over the others — all produce the same assertion JWT format. The choice of method depends on the authenticating entity's capabilities:
 
-| Method | Use Case | Mechanism |
-|--------|----------|-----------|
-| **WebAuthn** | Browser-based authentication | OAuth 2.0 Authorization Code + PKCE |
-| **Ed25519** | Programmatic / agent authentication | Challenge-response with Ed25519 signatures |
+| Method | Discovery value | Use Case | Mechanism |
+|--------|-----------------|----------|-----------|
+| **WebAuthn** | `webauthn` | Browser-based authentication | OAuth 2.0 Authorization Code + PKCE |
+| **Ed25519** | `ed25519` | Programmatic / agent authentication | Challenge-response with Ed25519 signatures |
+| **SSH key** | `ssh-key` | Programmatic authentication without a round-trip; the only method that can mint a delegated assertion | `private_key_jwt` client assertion at the token endpoint |
+
+The Ed25519 and SSH-key methods both prove possession of an Ed25519 private key. They differ in who supplies the signed material: the challenge-response flow signs a challenge the IdP issued, while the SSH-key flow signs a self-issued assertion. An entity whose key is registered can use either.
 
 An IdP MUST support at least one method and MUST advertise supported methods via `ddisa_auth_methods_supported` in the discovery document.
 
@@ -420,7 +423,7 @@ Content-Type: application/json
 }
 ```
 
-The response MUST include the `assertion` field containing the signed JWT (see [Section 5.4](#54-token-format)).
+The response MUST include the `assertion` field containing the signed JWT (see [Section 5.5](#55-token-format)).
 
 The response MUST include the `authorization_details` field ([RFC 9396](https://datatracker.ietf.org/doc/html/rfc9396)). If no authorization details are present, the field MUST be an empty array.
 
@@ -511,13 +514,83 @@ The `token` field contains a signed JWT. The `expires_in` field indicates the to
 
 Agent enrollment (registering new Ed25519 key pairs) is an IdP-specific operation and is outside the scope of this specification. Implementations MAY provide enrollment endpoints, but the mechanism is not standardized.
 
-### 5.4 Token Format
+### 5.4 SSH-Key Flow (`private_key_jwt` Client Assertion)
 
-Both authentication methods produce a JWT (JSON Web Token) as the assertion. The JWT MUST be signed using a key published in the IdP's JWKS.
+This flow authenticates an entity with a short-lived JWT it issues and signs itself, presented at the token endpoint as an OpenID Connect [`private_key_jwt`](https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication) client assertion. It needs no challenge round-trip, and it is the only method that can mint a **delegated** assertion (see [delegation.md Section 6.4](delegation.md#64-programmatic-delegation)).
+
+#### 5.4.1 Prerequisites
+
+The authenticating entity MUST have an Ed25519 SSH public key registered with the IdP for its identity.
+
+An IdP offering this flow MUST advertise `"ssh-key"` in `ddisa_auth_methods_supported` and, in its OIDC discovery document, MUST advertise `"client_credentials"` in `grant_types_supported`, `"private_key_jwt"` in `token_endpoint_auth_methods_supported`, and `"EdDSA"` in `token_endpoint_auth_signing_alg_values_supported`.
+
+#### 5.4.2 Client Assertion Format
+
+The client assertion is a JWT with header `{"alg": "EdDSA", "typ": "JWT"}` and the following claims:
+
+| Claim | Status | Description |
+|-------|--------|-------------|
+| `iss` | REQUIRED | The entity's identifier (email or ID), as registered with the IdP. |
+| `sub` | REQUIRED | Same value as `iss`. |
+| `aud` | REQUIRED | The IdP's `token_endpoint` URL, exactly as published in discovery. |
+| `jti` | REQUIRED | Unique identifier. The IdP MUST reject a `jti` it has already seen within the assertion's lifetime. |
+| `iat` | REQUIRED | Issued-at timestamp (Unix seconds). |
+| `exp` | REQUIRED | Expiration timestamp. `exp - iat` SHOULD NOT exceed 300 seconds. |
+
+The assertion MUST be signed with the private key whose public half is registered with the IdP.
+
+An entity MAY have several keys registered. The IdP MUST accept the assertion if it verifies against **any** key registered for that identity, and MUST NOT restrict verification to one designated key — the entity cannot know which of its keys the IdP would single out, so verifying against only one turns a valid assertion into an authentication failure.
+
+#### 5.4.3 Token Request
+
+**Request:**
+
+```
+POST /token
+Content-Type: application/json
+
+{
+  "grant_type": "client_credentials",
+  "client_assertion_type": "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+  "client_assertion": "<JWT>"
+}
+```
+
+| Field | Status | Description |
+|-------|--------|-------------|
+| `grant_type` | REQUIRED | MUST be `"client_credentials"`. |
+| `client_assertion_type` | REQUIRED | MUST be `"urn:ietf:params:oauth:client-assertion-type:jwt-bearer"`. |
+| `client_assertion` | REQUIRED | The JWT from Section 5.4.2. |
+| `audience` | CONDITIONAL | The target SP's `client_id`. REQUIRED when `delegation_grant` is present. |
+| `delegation_grant` | OPTIONAL | A delegation grant ID. Switches the response to a delegated assertion — see [delegation.md Section 6.4](delegation.md#64-programmatic-delegation). |
+
+**Response:**
+
+```json
+{
+  "access_token": "<JWT>",
+  "token_type": "Bearer",
+  "expires_in": 3600
+}
+```
+
+The response MUST NOT be cached (`Cache-Control: no-store`).
+
+Errors at the token endpoint use the OAuth 2.0 error format ([RFC 6749 Section 5.2](https://datatracker.ietf.org/doc/html/rfc6749#section-5.2)) rather than the RFC 7807 format of Section 6:
+
+| Error | Status | Condition |
+|-------|--------|-----------|
+| `unsupported_grant_type` | 400 | `grant_type` is not supported by the IdP. |
+| `invalid_request` | 400 | `client_assertion_type` is unsupported, `client_assertion` is missing, or `audience` is missing alongside `delegation_grant`. |
+| `invalid_client` | 401 | The assertion fails verification: bad signature, unknown or inactive identity, no registered key, expired, or a replayed `jti`. |
+
+### 5.5 Token Format
+
+All three authentication methods produce a JWT (JSON Web Token) as the assertion. The JWT MUST be signed using a key published in the IdP's JWKS.
 
 The JWT MUST be signed with `EdDSA` (Ed25519). Implementations MAY accept `ES256` for backward compatibility but MUST NOT issue new tokens with `ES256`. The algorithm is determined by the IdP's signing key.
 
-#### 5.4.1 Assertion Claims
+#### 5.5.1 Assertion Claims
 
 | Claim | Status | Type | Description |
 |-------|--------|------|-------------|
@@ -532,7 +605,7 @@ The JWT MUST be signed with `EdDSA` (Ed25519). Implementations MAY accept `ES256
 | `delegate` | OPTIONAL | object | Delegate information for delegation scenarios. See [delegation.md](delegation.md). |
 | `delegation_grant` | OPTIONAL | string | Grant ID authorizing the delegation. See [delegation.md](delegation.md). |
 
-#### 5.4.2 Example Assertion (Decoded Payload)
+#### 5.5.2 Example Assertion (Decoded Payload)
 
 ```json
 {
@@ -546,7 +619,7 @@ The JWT MUST be signed with `EdDSA` (Ed25519). Implementations MAY accept `ES256
 }
 ```
 
-### 5.5 Assertion Verification
+### 5.6 Assertion Verification
 
 An SP receiving an assertion MUST perform the following validation steps:
 
@@ -558,7 +631,7 @@ An SP receiving an assertion MUST perform the following validation steps:
 
 If any validation step fails, the SP MUST reject the assertion.
 
-### 5.6 Policy Evaluation
+### 5.7 Policy Evaluation
 
 After successful authentication, the IdP evaluates the `mode` from the DNS record (if present) to determine whether the SP is allowed to receive an assertion:
 

@@ -244,7 +244,7 @@ When a delegate authenticates and acts on behalf of a delegator, the resulting a
 
 ### 5.1 Assertion Claims for Delegation
 
-In addition to the standard assertion claims (see [core.md Section 5.4.1](core.md#541-assertion-claims)), delegation adds:
+In addition to the standard assertion claims (see [core.md Section 5.5.1](core.md#551-assertion-claims)), delegation adds:
 
 | Claim | Status | Type | Description |
 |-------|--------|------|-------------|
@@ -252,6 +252,7 @@ In addition to the standard assertion claims (see [core.md Section 5.4.1](core.m
 | `act` | REQUIRED | object | RFC 8693 actor claim: `{ "sub": "<delegate-identity>" }`. |
 | `delegate` | OPTIONAL | object | Extended delegate information (see below). |
 | `delegation_grant` | OPTIONAL | string | The grant ID authorizing this delegation. |
+| `scope` | CONDITIONAL | string[] | The delegation's granted scopes (see [grants.md](grants.md)). REQUIRED when the assertion was minted from a delegation grant; `[]` means nothing is allowed. |
 
 ### 5.2 `act` Claim (RFC 8693)
 
@@ -344,7 +345,7 @@ The `delegate` claim provides additional context about the delegation:
 
 When an SP receives an assertion with delegation claims, it MUST:
 
-1. Verify the assertion JWT signature and standard claims (see [core.md Section 5.5](core.md#55-assertion-verification)).
+1. Verify the assertion JWT signature and standard claims (see [core.md Section 5.6](core.md#56-assertion-verification)).
 2. Check that `act` is an object (indicating delegation, not direct auth).
 3. Optionally call `POST /{delegation_grant}/validate` at the IdP to verify the delegation is still active and the scopes are sufficient.
 4. Apply scope restrictions — the delegate SHOULD only be allowed to perform actions within the delegation's `scopes`.
@@ -361,6 +362,42 @@ When an SP receives an assertion with delegation claims, it MUST:
 ```
 
 After revocation, any subsequent validation requests for this delegation MUST return `valid: false`.
+
+### 6.4 Programmatic Delegation
+
+Step 3 of Section 6.1 — "the delegate authenticates" — has one concrete form when no browser is involved: the delegate uses the SSH-key flow ([core.md Section 5.4](core.md#54-ssh-key-flow-private_key_jwt-client-assertion)) and names the grant it wants to exercise.
+
+```
+  Delegate                                        IdP
+     |                                             |
+     |  POST /token                                |
+     |  grant_type=client_credentials              |
+     |  client_assertion=<JWT signed with          |
+     |    the delegate's registered SSH key>       |
+     |  delegation_grant=<grant id>                |
+     |  audience=<SP client_id>                    |
+     |-------------------------------------------->|
+     |                                             |  verify assertion
+     |                                             |  verify grant
+     |                                             |  consume if "once"
+     |  200 { access_token, token_type,            |
+     |        expires_in }                         |
+     |<--------------------------------------------|
+```
+
+The delegate's identity comes from the signed client assertion alone. The IdP MUST NOT require the delegate to additionally present a bearer token it holds from an earlier authentication: possession of the registered private key is the proof, and requiring a second credential would only bind the exchange to the lifetime of a token that proves nothing further.
+
+On receiving the request, the IdP MUST:
+
+1. Verify the client assertion per [core.md Section 5.4.2](core.md#542-client-assertion-format), yielding the delegate identity from `sub`.
+2. Reject with `invalid_request` if `audience` is absent.
+3. Resolve `delegation_grant` and verify that it is approved and not expired, that its `delegate` matches the identity from step 1, and that its `audience` matches the `audience` parameter. If any check fails, the IdP MUST reject the request and MUST NOT issue an assertion.
+4. Consume the grant if its `grant_type` is `"once"` (see [grants.md](grants.md)).
+5. Issue an assertion with the delegation claims of Section 5.1: `sub` set to the delegator, `act` set to `{ "sub": "<delegate>" }`, and `delegation_grant` set to the grant ID.
+
+The issued assertion MUST carry the grant's `scopes` in its `scope` claim. A grant that states no scopes MUST yield `scope: []`, never an absent claim — an SP reading a delegated assertion has to be able to tell "nothing allowed" from "unbounded", and the absent claim is indistinguishable from an SP that simply does not check.
+
+`aud` of the issued assertion is the `audience` parameter, so the token is usable only at the SP the delegation names (see Section 7.2).
 
 ---
 
