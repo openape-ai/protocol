@@ -174,10 +174,28 @@ The `request` object describes what is being requested.
 | `execution_context` | OPTIONAL | object | Execution binding for wrapped CLI grants, including `argv`, `argv_hash`, adapter identity, and adapter digest. |
 | `duration` | CONDITIONAL | number | Duration in seconds. REQUIRED when `grant_type` is `"timed"`. |
 | `reason` | OPTIONAL | string | Human-readable reason for the request. |
+| `summary` | OPTIONAL | object | The requester's own account of what the request is about, for display in approval UIs. Contains `text` (REQUIRED, string) and `link` (OPTIONAL, string). |
+| `waits_until` | OPTIONAL | number | Unix timestamp until which the requester will wait for a decision. |
 | `run_as` | OPTIONAL | string | Execute as this user identity. |
 | `delegator` | OPTIONAL | string | Who is being acted on behalf of (delegation grants only). |
 | `delegate` | OPTIONAL | string | Who is allowed to act (delegation grants only). |
 | `scopes` | OPTIONAL | string[] | Allowed actions under the delegation (delegation grants only). |
+
+**Request summary.** `summary.text` is free text whose line breaks are
+significant and SHOULD be preserved when displayed. The summary is supplied by
+the requester and is NOT verified by the authorization server: approval UIs
+MUST present it as the requester's own statement rather than as established
+fact, and MUST NOT let it replace `command`, `permissions`, or
+`authorization_details` as the description of what the grant authorizes.
+Approval UIs MUST NOT render `summary.link` as a followable link unless its
+scheme is `http` or `https` — a requester-supplied URI is otherwise a
+script-execution vector in a browser-based approval surface.
+
+**Waiting requesters.** Once `waits_until` has passed, the requester is assumed
+to have stopped waiting: an approval can no longer cause the requested action
+to happen and only establishes authorization for future requests. Approval UIs
+SHOULD distinguish the two cases, and SHOULD NOT offer a single-use approval
+for a request whose `waits_until` has passed, because it would have no effect.
 
 ### 3.5 Structured CLI Authorization Details
 
