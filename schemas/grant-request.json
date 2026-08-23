@@ -112,6 +112,26 @@
       "type": "string",
       "description": "Human-readable reason for the request."
     },
+    "summary": {
+      "type": "object",
+      "description": "The requester's own account of the request, for display in approval UIs. Not verified by the authorization server.",
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Free text. Line breaks are significant."
+        },
+        "link": {
+          "type": "string",
+          "description": "Where the approver can verify the claim. Only http(s) may be rendered as a link."
+        }
+      },
+      "required": ["text"],
+      "additionalProperties": false
+    },
+    "waits_until": {
+      "type": "integer",
+      "description": "Unix timestamp until which the requester will wait for a decision."
+    },
     "delegator": {
       "type": "string",
       "description": "Who is being acted on behalf of (delegation grants only)."
