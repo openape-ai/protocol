@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-09-19
+
+- Add the optional Grant Brokering Profile: external agent identities, owner-scoped broker consent, signed mediated requests, original decision-provider signatures and revocation-aware execution. Extend discovery and grant schemas with profile metadata and immutable provenance.
+
 All notable changes to the DDISA Protocol Specification will be documented in this file.
 
 ## [1.0-draft] - 2026-03-12

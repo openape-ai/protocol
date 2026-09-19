@@ -13,6 +13,8 @@ DDISA is an open protocol for decentralized identity on the web. It uses DNS TXT
 | [delegation.md](delegation.md) | **Delegation Protocol** — User-to-user delegation of rights at Service Providers. Builds on Grants. |
 | [sp-data-access.md](sp-data-access.md) | **SP Data Access Profile** — one SP reads a user's data from another, user-consented, no registration. Profile over Grants + Delegation. |
 
+The optional [Grant Brokering Profile](grant-brokering.md) connects agent identities at one provider to human-owned command decisions at another. It adds request mediation and explicit owner consent without delegating approval or signing authority.
+
 ## Schemas
 
 Machine-readable [JSON Schema](https://json-schema.org/) (Draft 2020-12) definitions for all data formats:
@@ -28,6 +30,8 @@ Machine-readable [JSON Schema](https://json-schema.org/) (Draft 2020-12) definit
 | [delegation.json](schemas/delegation.json) | delegation.md Section 3 |
 | [sp-scope-catalog.json](schemas/sp-scope-catalog.json) | sp-data-access.md Section 3 |
 | [error.json](schemas/error.json) | core.md Section 6 |
+
+Additional profile schemas: [broker request claims](schemas/broker-request-claims.json) and [enrollment receipt claims](schemas/broker-connection-claims.json). See the [two-issuer walkthrough](examples/grant-brokering.md).
 
 ## Examples
 

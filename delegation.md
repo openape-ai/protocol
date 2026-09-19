@@ -410,3 +410,7 @@ SPs that cache delegation status SHOULD re-validate delegations periodically (RE
 ### Informative References
 
 - [DDISA Core Specification](core.md) — Core DNS discovery and authentication protocol
+
+## Request Mediation
+
+[Grant Brokering](grant-brokering.md) forwards an agent’s request for direct human approval. It does not grant the broker execution rights to delegate onward and therefore is not delegation chaining. The restriction in §7.3 remains unchanged.
