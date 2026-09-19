@@ -1,0 +1,126 @@
+{
+  "receipt": {
+    "iss": "https://id.example.com",
+    "sub": "alice@example.com",
+    "aud": "https://pods.example.com",
+    "iat": 1789812000,
+    "exp": 1789812300,
+    "jti": "f101789d-263c-49a6-95bc-b75cf5e5d209",
+    "connection_id": "81eec0d9-2c19-4ef9-a0cc-5cfa72253d01",
+    "agent_domain": "pods.example.com"
+  },
+  "create": {
+    "iss": "https://pods.example.com",
+    "sub": "invoice@pods.example.com",
+    "aud": "https://id.example.com",
+    "iat": 1789812000,
+    "exp": 1789812060,
+    "jti": "988e3377-e004-4fef-aa5f-f7e0ca228ef7",
+    "connection_id": "81eec0d9-2c19-4ef9-a0cc-5cfa72253d01",
+    "owner": "alice@example.com",
+    "key_id": "example-public-key-fingerprint",
+    "operation": "create",
+    "request": {
+      "requester": "invoice@pods.example.com",
+      "target_host": "owner-laptop",
+      "audience": "shapes",
+      "grant_type": "once",
+      "command": [
+        "printf",
+        "invoice-ready"
+      ],
+      "permissions": [
+        "command:printf"
+      ]
+    }
+  },
+  "get": {
+    "iss": "https://pods.example.com",
+    "sub": "invoice@pods.example.com",
+    "aud": "https://id.example.com",
+    "iat": 1789812000,
+    "exp": 1789812060,
+    "jti": "988e3377-e004-4fef-aa5f-f7e0ca228ef7",
+    "connection_id": "81eec0d9-2c19-4ef9-a0cc-5cfa72253d01",
+    "owner": "alice@example.com",
+    "key_id": "example-public-key-fingerprint",
+    "operation": "get",
+    "grant_id": "9b52326a-634d-4a95-894a-fc3b56bb2f3f"
+  },
+  "token": {
+    "iss": "https://pods.example.com",
+    "sub": "invoice@pods.example.com",
+    "aud": "https://id.example.com",
+    "iat": 1789812000,
+    "exp": 1789812060,
+    "jti": "988e3377-e004-4fef-aa5f-f7e0ca228ef7",
+    "connection_id": "81eec0d9-2c19-4ef9-a0cc-5cfa72253d01",
+    "owner": "alice@example.com",
+    "key_id": "example-public-key-fingerprint",
+    "operation": "token",
+    "grant_id": "9b52326a-634d-4a95-894a-fc3b56bb2f3f"
+  },
+  "connection": {
+    "iss": "https://pods.example.com",
+    "aud": "https://id.example.com",
+    "iat": 1789812000,
+    "exp": 1789812060,
+    "jti": "988e3377-e004-4fef-aa5f-f7e0ca228ef7",
+    "connection_id": "81eec0d9-2c19-4ef9-a0cc-5cfa72253d01",
+    "owner": "alice@example.com",
+    "operation": "connection"
+  },
+  "grant": {
+    "id": "9b52326a-634d-4a95-894a-fc3b56bb2f3f",
+    "status": "approved",
+    "created_at": 1789812000,
+    "decided_at": 1789812010,
+    "decided_by": "alice@example.com",
+    "request": {
+      "requester": "invoice@pods.example.com",
+      "target_host": "owner-laptop",
+      "audience": "shapes",
+      "grant_type": "once",
+      "command": [
+        "printf",
+        "invoice-ready"
+      ],
+      "permissions": [
+        "command:printf"
+      ]
+    },
+    "brokered": {
+      "connection_id": "81eec0d9-2c19-4ef9-a0cc-5cfa72253d01",
+      "broker_issuer": "https://pods.example.com",
+      "agent_issuer": "https://pods.example.com",
+      "owner": "alice@example.com",
+      "key_id": "example-public-key-fingerprint"
+    }
+  },
+  "authorization": {
+    "iss": "https://id.example.com",
+    "sub": "invoice@pods.example.com",
+    "aud": "shapes",
+    "target_host": "owner-laptop",
+    "iat": 1789812010,
+    "exp": 1789812310,
+    "jti": "6380a545-c868-4445-b8dd-95a9eae8adfd",
+    "grant_id": "9b52326a-634d-4a95-894a-fc3b56bb2f3f",
+    "grant_type": "once",
+    "command": [
+      "printf",
+      "invoice-ready"
+    ],
+    "permissions": [
+      "command:printf"
+    ],
+    "decided_by": "alice@example.com",
+    "brokered": {
+      "connection_id": "81eec0d9-2c19-4ef9-a0cc-5cfa72253d01",
+      "broker_issuer": "https://pods.example.com",
+      "agent_issuer": "https://pods.example.com",
+      "owner": "alice@example.com",
+      "key_id": "example-public-key-fingerprint"
+    }
+  }
+}

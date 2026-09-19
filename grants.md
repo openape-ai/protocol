@@ -690,3 +690,7 @@ Grants Protocol errors follow [RFC 7807](https://datatracker.ietf.org/doc/html/r
 - [RFC 9396](https://datatracker.ietf.org/doc/html/rfc9396) — OAuth 2.0 Rich Authorization Requests
 - [DDISA Core Specification](core.md) — Core DNS discovery and authentication protocol
 - [OpenApe Delegation Protocol](delegation.md) — Delegation extension built on grants
+
+## Optional Grant Brokering Profile
+
+[Grant Brokering](grant-brokering.md) defines a dedicated signed-request endpoint for an owner-authorized agent provider. Only that endpoint may authenticate the broker separately from the agent requester. Brokered grants retain the decision IdP signature and carry immutable `brokered` provenance in both the Grant and AuthZ-JWT. Owner routing and consumption use the connection instead of a local requester account. Base endpoint authentication remains unchanged.
