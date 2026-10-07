@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-07
+
+- Add the optional display-only `request.batch` grouping (`id`, `title`, `size`) to grant requests, the `batch` list filter and the `openape_grant_batch_supported` discovery flag. Batches never change the authorization semantics of their members. Batch operations are authorized per operation like the single-grant endpoints.
+
 ## 2026-09-19
 
 - Add the optional Grant Brokering Profile: external agent identities, owner-scoped broker consent, signed mediated requests, original decision-provider signatures and revocation-aware execution. Extend discovery and grant schemas with profile metadata and immutable provenance.

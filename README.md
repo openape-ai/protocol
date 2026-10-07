@@ -43,6 +43,7 @@ Complete HTTP request/response examples for all protocol flows:
 | [auth-passkey-flow.md](examples/auth-passkey-flow.md) | Full OAuth 2.0 + PKCE + WebAuthn flow |
 | [auth-ed25519-flow.md](examples/auth-ed25519-flow.md) | Ed25519 challenge-response for agents |
 | [grant-lifecycle.md](examples/grant-lifecycle.md) | Create, poll, approve, token, consume |
+| [grant-batch.md](examples/grant-batch.md) | Members of a request batch decided together |
 | [delegation-flow.md](examples/delegation-flow.md) | Create delegation, act on behalf, validate, revoke |
 | [error-examples.md](examples/error-examples.md) | RFC 7807 error responses for all error types |
 
