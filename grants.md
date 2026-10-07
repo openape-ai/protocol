@@ -92,6 +92,7 @@ An IdP that supports the Grants Protocol MUST advertise its support via the OIDC
 | `openape_grant_types_supported` | REQUIRED | string[] | Supported grant types. MUST include at least one of: `"once"`, `"timed"`, `"always"`. |
 | `openape_grant_categories_supported` | OPTIONAL | string[] | Supported grant categories. Values: `"command"`, `"delegation"`, `"standing"`. Default: `["command"]`. |
 | `authorization_details_types_supported` | OPTIONAL | string[] | Supported RFC 9396 authorization detail types. Implementations supporting structured CLI grants SHOULD include `"openape_cli"`. |
+| `openape_grant_batch_supported` | OPTIONAL | boolean | `true` if the IdP stores `request.batch` and supports the `batch` list filter ([Section 3.4](#34-grant-request), [Section 4.2](#42-list-grants)). Default: `false`. |
 
 **Example:**
 
@@ -176,6 +177,7 @@ The `request` object describes what is being requested.
 | `reason` | OPTIONAL | string | Human-readable reason for the request. |
 | `summary` | OPTIONAL | object | The requester's own account of what the request is about, for display in approval UIs. Contains `text` (REQUIRED, string) and `link` (OPTIONAL, string). |
 | `waits_until` | OPTIONAL | number | Unix timestamp until which the requester will wait for a decision. |
+| `batch` | OPTIONAL | object | Display grouping for grants the requester submits for a joint decision. Contains `id` (REQUIRED, string, 1–128 characters from `A-Z a-z 0-9 . _ : -`), `title` (OPTIONAL, string, at most 200 characters) and `size` (OPTIONAL, integer 1–100, the number of grants the requester intends to submit under this `id`). |
 | `run_as` | OPTIONAL | string | Execute as this user identity. |
 | `delegator` | OPTIONAL | string | Who is being acted on behalf of (delegation grants only). |
 | `delegate` | OPTIONAL | string | Who is allowed to act (delegation grants only). |
@@ -196,6 +198,32 @@ to have stopped waiting: an approval can no longer cause the requested action
 to happen and only establishes authorization for future requests. Approval UIs
 SHOULD distinguish the two cases, and SHOULD NOT offer a single-use approval
 for a request whose `waits_until` has passed, because it would have no effect.
+
+**Request batches.** `batch` is presentation metadata. It MUST NOT change the
+authorization semantics of any grant: every member is approved, denied,
+consumed, revoked and expires individually, and an IdP MUST NOT approve, reuse
+or consume anything by `batch.id`. Grants are members of the same batch only
+when both `requester` and `batch.id` are equal; approval UIs MUST NOT group
+grants of different requesters.
+
+A joint decision must not hide a lasting or differently scoped grant behind a
+harmless row. A batch member MUST therefore be a `once` grant without `run_as`,
+`delegator`, `delegate` or `scopes`, and MUST share `audience`, `target_host`,
+`waits_until`, `batch.title` and `batch.size` with the members already
+submitted under the same `requester` and `batch.id`. An IdP MUST reject a
+member that violates this, and MUST reject further members once `size`
+members exist. Approval UIs MUST show the shared audience and target host and
+SHOULD offer any member that nevertheless differs only in its single-grant
+view. `batch.title` is, like `summary`, the
+requester's own statement and MUST be presented as such. An approval UI MAY
+present the members as one decision with per-member selection; it MUST show
+each member's `summary` when present and MUST offer access to each member's
+authoritative content (`command`, `permissions`, `authorization_details`).
+When fewer than `size` members are visible, approval UIs SHOULD say so. A
+joint decision is expressed through [Batch Operations](#410-batch-operations),
+one operation per member. Standing grants apply to each member as to any other
+grant. An IdP that does not support batches ignores the field and presents the
+members as individual grants.
 
 ### 3.5 Structured CLI Authorization Details
 
@@ -286,6 +314,7 @@ Returns grants visible to the authenticated user.
 | `role` | string | Filter by the authenticated user's role: `"requester"`, `"approver"`, `"admin"`. |
 | `status` | string | Filter by grant status. |
 | `type` | string | Filter by grant category (`"command"`, `"delegation"`). |
+| `batch` | string | Filter by `request.batch.id`. Only meaningful together with `requester`, because batch identifiers are scoped to their requester. Supported when `openape_grant_batch_supported` is `true`; clients MUST NOT rely on it otherwise and poll the members individually ([Section 4.3](#43-get-grant)). |
 | `limit` | number | Maximum number of results. Default: `20`. Maximum: `100`. |
 | `cursor` | string | Cursor for pagination (see [Section 5](#5-pagination)). |
 
@@ -490,6 +519,13 @@ Performs multiple approve/deny/revoke operations in a single request.
 ```
 
 The batch endpoint MUST process all operations and return results for each. Partial failures MUST NOT cause the entire batch to fail.
+
+Each operation MUST be authorized exactly like the corresponding single-grant
+endpoint ([Section 4.4](#44-approve-grant)–[Section 4.6](#46-revoke-grant));
+an operation the caller is not authorized for fails individually with
+`forbidden`. Approval UIs use this endpoint to decide the members of a
+[request batch](#34-grant-request) in one step, typically approving the
+selected members and denying the rest.
 
 ---
 
