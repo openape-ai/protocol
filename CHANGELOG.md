@@ -2,7 +2,7 @@
 
 ## 2026-10-07
 
-- Add the optional display-only `request.batch` grouping (`id`, `title`, `size`) to grant requests, the `batch` list filter and the `openape_grant_batch_supported` discovery flag. Batches never change the authorization semantics of their members. Batch operations are authorized per operation like the single-grant endpoints.
+- Add the optional display-only `request.batch` grouping (`id`, `title`, `size`) to grant requests, the `batch` list filter and the `openape_grant_batch_supported` discovery flag. Batches never change the authorization semantics of their members; members must be uniform `once` grants of one audience and target host. Batch operations are authorized per operation like the single-grant endpoints.
 
 ## 2026-09-19
 

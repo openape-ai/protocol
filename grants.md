@@ -204,7 +204,17 @@ authorization semantics of any grant: every member is approved, denied,
 consumed, revoked and expires individually, and an IdP MUST NOT approve, reuse
 or consume anything by `batch.id`. Grants are members of the same batch only
 when both `requester` and `batch.id` are equal; approval UIs MUST NOT group
-grants of different requesters. `batch.title` is, like `summary`, the
+grants of different requesters.
+
+A joint decision must not hide a lasting or differently scoped grant behind a
+harmless row. A batch member MUST therefore be a `once` grant without `run_as`,
+`delegator`, `delegate` or `scopes`, and MUST share `audience`, `target_host`,
+`waits_until`, `batch.title` and `batch.size` with the members already
+submitted under the same `requester` and `batch.id`. An IdP MUST reject a
+member that violates this, and MUST reject further members once `size`
+members exist. Approval UIs MUST show the shared audience and target host and
+SHOULD offer any member that nevertheless differs only in its single-grant
+view. `batch.title` is, like `summary`, the
 requester's own statement and MUST be presented as such. An approval UI MAY
 present the members as one decision with per-member selection; it MUST show
 each member's `summary` when present and MUST offer access to each member's
