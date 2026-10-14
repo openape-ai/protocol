@@ -182,6 +182,7 @@ The `request` object describes what is being requested.
 | `delegator` | OPTIONAL | string | Who is being acted on behalf of (delegation grants only). |
 | `delegate` | OPTIONAL | string | Who is allowed to act (delegation grants only). |
 | `scopes` | OPTIONAL | string[] | Allowed actions under the delegation (delegation grants only). |
+| `submitted_by` | OPTIONAL | object | Set by the authorization server only: the delegate that filed the request for `requester` under a `grants:request` delegation ([delegation.md Section 8](delegation.md#8-delegations-at-the-idps-grants-api)). Contains `delegate` and `delegation_grant` (both REQUIRED, string). A client-supplied value MUST be ignored. |
 
 **Request summary.** `summary.text` is free text whose line breaks are
 significant and SHOULD be preserved when displayed. The summary is supplied by
@@ -291,6 +292,7 @@ Creates a new grant with status `pending`.
 - `grant_type` MUST be one of the values in `openape_grant_types_supported`.
 - If `grant_type` is `"timed"`, `duration` MUST be present and positive.
 - If the request is authenticated via an agent token, the `requester` field MUST be set to the authenticated agent's identity.
+- If the request is authenticated via a delegated token with the `grants:request` scope, `requester` MUST be one of the delegator's own agents and the grant MUST remain `pending` ([delegation.md Section 8](delegation.md#8-delegations-at-the-idps-grants-api)).
 - If `authorization_details` contains `openape_cli` entries, each `permission` MUST match the canonical form derived from `cli_id`, `resource_chain`, and `action`.
 - If `authorization_details` contains `openape_cli` entries, implementations SHOULD derive `permissions` from those details instead of trusting client-provided strings.
 - If `execution_context.argv` is present, implementations SHOULD recompute `execution_context.argv_hash` server-side.
@@ -661,6 +663,7 @@ Authorization: Bearer <token>
 The token can be:
 - A **session token** (for human users authenticated via WebAuthn).
 - An **agent token** (for automated agents authenticated via Ed25519).
+- A **delegated token** with `grants:read` or `grants:request` scope, only on the endpoints and under the rules of [delegation.md Section 8](delegation.md#8-delegations-at-the-idps-grants-api). A delegated token MUST NOT approve, deny or revoke grants.
 
 ### 8.2 Permission Model
 

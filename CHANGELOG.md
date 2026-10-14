@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-14
+
+- Add delegations at the IdP's own grants API (delegation.md §8): the scopes `grants:read` and `grants:request` let a user's own agent read the user's grants and file pending requests for the user's agents, with the IdP issuer as audience. Deciding grants stays non-delegable; every other IdP endpoint refuses delegated tokens. Grant requests gain the server-set `submitted_by` provenance.
+
 ## 2026-10-07
 
 - Add the optional display-only `request.batch` grouping (`id`, `title`, `size`) to grant requests, the `batch` list filter and the `openape_grant_batch_supported` discovery flag. Batches never change the authorization semantics of their members; members must be uniform `once` grants of one audience and target host. Batch operations are authorized per operation like the single-grant endpoints.
