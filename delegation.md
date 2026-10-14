@@ -18,6 +18,7 @@ The OpenApe Delegation Protocol enables users to delegate rights to other users 
 5. [Delegation JWT Claims](#5-delegation-jwt-claims)
 6. [Flows](#6-flows)
 7. [Security Considerations](#7-security-considerations)
+8. [Delegations at the IdP's Grants API](#8-delegations-at-the-idps-grants-api)
 
 ---
 
@@ -396,6 +397,50 @@ Only session-authenticated users (not agents) MAY create delegations. This ensur
 ### 7.5 Revocation Propagation
 
 SPs that cache delegation status SHOULD re-validate delegations periodically (RECOMMENDED: every 5 minutes) or on each use. Cached delegation validity MUST NOT exceed the delegation's `expires_at`.
+
+---
+
+## 8. Delegations at the IdP's Grants API
+
+A user MAY let one of their own agents read the user's grants and file grant requests for the user's agents, for example a personal automation that proposes broader standing approvals. The IdP is then the Service Provider of the delegation. Deciding grants is never delegable: the user stays the only approver of their agents' requests (requester ≠ approver).
+
+### 8.1 Scopes
+
+| Scope | Allows |
+|-------|--------|
+| `grants:read` | `GET` on the grants list ([grants.md Section 4.2](grants.md#42-list-grants)) with the visibility of the delegator, and listing the delegator's standing grants. |
+| `grants:request` | Creating grant requests ([grants.md Section 4.1](grants.md#41-create-grant)) whose `requester` is one of the delegator's own active agents. |
+
+There is no scope for approving, denying or revoking grants, for standing grant management or for delegation management. An IdP MUST reject any other scope with the prefix `grants:` when a delegation is created.
+
+### 8.2 Creating the Delegation
+
+A delegation carrying a `grants:` scope MUST name the IdP's issuer identifier as its `audience` (not `"*"`), and its `delegate` MUST be an active agent owned by the delegator. The IdP MUST reject the creation otherwise. Creation follows [Section 4.1](#41-create-delegation): only the session-authenticated delegator can create it, and the delegator can revoke it at any time ([Section 4.4](#44-revoke-delegation)).
+
+### 8.3 Obtaining a Delegated Token
+
+The delegate obtains a delegated token at the IdP's token endpoint with an OAuth 2.0 client-credentials request, authenticating with its own key (RFC 7523 client assertion):
+
+```
+POST /token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<JWT signed by the delegate, aud = <issuer>/token>
+&delegation_grant=<delegation id>
+&audience=<IdP issuer identifier>
+```
+
+The token carries `sub` = delegator, `act` = `{ "sub": "<delegate>" }`, `aud` = the IdP issuer, `delegation_grant` ([Section 5](#5-delegation-jwt-claims)) and `scope`, the delegation's scopes. A `once` delegation is consumed by this exchange; recurring use needs a `timed` or `always` delegation.
+
+### 8.4 Enforcement
+
+- The IdP MUST accept a delegated token on its grants API only on the endpoints listed in [Section 8.1](#81-scopes), only with `aud` equal to its issuer identifier, and only while the delegation is approved and includes the required scope. It MUST re-check the delegation on every request, so revocation takes effect before the token expires.
+- Every other IdP endpoint MUST refuse delegated tokens, in particular approve, deny, revoke, batch decisions, token issuance for a grant, standing grant management and delegation management. A delegated token with any other audience MUST NOT authenticate at the IdP.
+- A request filed with `grants:request` MUST NOT name the delegator itself or anyone else's agent as `requester`, and MUST NOT carry delegation fields (`delegator`, `delegate`, `scopes`; no chaining, [Section 7.3](#73-no-chaining)).
+- Such a request MUST remain `pending` until the delegator decides it: it MUST NOT be settled by grant reuse, standing grants or other automatic approval.
+- The IdP MUST record the submitting delegate in `request.submitted_by` (`delegate`, `delegation_grant`) and MUST ignore a client-supplied `submitted_by`. Approval UIs SHOULD show that the request was filed by the delegate on the requester's behalf.
 
 ---
 
