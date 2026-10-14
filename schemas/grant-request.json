@@ -120,7 +120,7 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 120,
-          "pattern": "^[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]*\\S[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]*$",
+          "pattern": "^[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]*[^\\s\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}][^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]*$",
           "description": "One line naming what the request is about."
         },
         "description": {
