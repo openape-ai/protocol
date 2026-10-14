@@ -3,6 +3,7 @@
 ## 2026-10-14
 
 - Replace the grant request `summary` member `text` with `title` (REQUIRED, one line, 1–120 characters), `description` (at most 2000 characters, line breaks kept) and `origin` (one line, at most 120 characters, set by the requester's runtime); `link` is now limited to 2048 characters. Unicode control, format and line/paragraph separator characters are refused in every member except LF in `description`, and an IdP rejects any other member including the former `text`. Existing grants are expected to be migrated (first non-empty line to `title`, the rest to `description`).
+- Add delegations at the IdP's own grants API (delegation.md §8): the scopes `grants:read` and `grants:request` let a user's own agent read the user's grants and file pending requests for the user's agents, with the IdP issuer as audience. Deciding grants stays non-delegable; every other IdP endpoint refuses delegated tokens. Grant requests gain the server-set `submitted_by` provenance.
 
 ## 2026-10-07
 
