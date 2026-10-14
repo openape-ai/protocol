@@ -27,7 +27,7 @@ Content-Type: application/json
   "grant_type": "once",
   "permissions": ["mail.archive"],
   "command": ["mail-archive", "move", "{\"message\":\"m-101\",\"digest\":\"SHA-256:5d1c…\"}"],
-  "summary": { "text": "\"Newsletter XY\" <news@xy.example> – What's new" },
+  "summary": { "title": "\"Newsletter XY\" <news@xy.example> – What's new", "origin": "Newsletter archive" },
   "waits_until": 1791345600,
   "batch": { "id": "b-20261007-0900", "title": "Newsletters, October 7", "size": 3 }
 }

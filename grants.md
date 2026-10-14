@@ -175,7 +175,7 @@ The `request` object describes what is being requested.
 | `execution_context` | OPTIONAL | object | Execution binding for wrapped CLI grants, including `argv`, `argv_hash`, adapter identity, and adapter digest. |
 | `duration` | CONDITIONAL | number | Duration in seconds. REQUIRED when `grant_type` is `"timed"`. |
 | `reason` | OPTIONAL | string | Human-readable reason for the request. |
-| `summary` | OPTIONAL | object | The requester's own account of what the request is about, for display in approval UIs. Contains `text` (REQUIRED, string) and `link` (OPTIONAL, string). |
+| `summary` | OPTIONAL | object | The requester's own account of what the request is about, for display in approval UIs. Contains `title` (REQUIRED), `description`, `origin` and `link` (all OPTIONAL); see *Request summary* below. |
 | `waits_until` | OPTIONAL | number | Unix timestamp until which the requester will wait for a decision. |
 | `batch` | OPTIONAL | object | Display grouping for grants the requester submits for a joint decision. Contains `id` (REQUIRED, string, 1–128 characters from `A-Z a-z 0-9 . _ : -`), `title` (OPTIONAL, string, at most 200 characters) and `size` (OPTIONAL, integer 1–100, the number of grants the requester intends to submit under this `id`). |
 | `run_as` | OPTIONAL | string | Execute as this user identity. |
@@ -183,11 +183,27 @@ The `request` object describes what is being requested.
 | `delegate` | OPTIONAL | string | Who is allowed to act (delegation grants only). |
 | `scopes` | OPTIONAL | string[] | Allowed actions under the delegation (delegation grants only). |
 
-**Request summary.** `summary.text` is free text whose line breaks are
-significant and SHOULD be preserved when displayed. The summary is supplied by
-the requester and is NOT verified by the authorization server: approval UIs
-MUST present it as the requester's own statement rather than as established
-fact, and MUST NOT let it replace `command`, `permissions`, or
+**Request summary.** `summary` is an object with these members:
+
+| Field | Status | Type | Description |
+|-------|--------|------|-------------|
+| `title` | REQUIRED | string | One line of 1–120 characters naming what the request is about. MUST contain a non-whitespace character. |
+| `description` | OPTIONAL | string | At most 2000 characters. Line breaks (LF, U+000A) are significant and SHOULD be preserved when displayed. |
+| `origin` | OPTIONAL | string | One line of at most 120 characters naming where within the requester the request comes from, for example the automation that caused it. Set by the requester's runtime, never taken from the content the requester processes. |
+| `link` | OPTIONAL | string | At most 2048 characters. Where the approver can verify the claim. |
+
+Lengths count Unicode code points. No member may contain a character of the
+Unicode general categories Cc (control), Cf (format, including bidirectional
+controls and zero-width characters), Zl or Zp, with the single exception of LF
+in `description`: such characters can make the displayed text differ from what
+was sent. An IdP MUST reject with `400` a request whose `summary` violates
+these rules or carries any other member; this includes the `text` member of
+earlier drafts, which this version replaces with `title` and `description`.
+
+The summary is supplied by the requester and is NOT verified by the
+authorization server: approval UIs MUST present all of its members, including
+`origin`, as the requester's own statement rather than as established fact,
+and MUST NOT let it replace `command`, `permissions`, or
 `authorization_details` as the description of what the grant authorizes.
 Approval UIs MUST NOT render `summary.link` as a followable link unless its
 scheme is `http` or `https` — a requester-supplied URI is otherwise a

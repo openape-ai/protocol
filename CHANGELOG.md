@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-14
+
+- Replace the grant request `summary` member `text` with `title` (REQUIRED, one line, 1–120 characters), `description` (at most 2000 characters, line breaks kept) and `origin` (one line, at most 120 characters, set by the requester's runtime); `link` is now limited to 2048 characters. Unicode control, format and line/paragraph separator characters are refused in every member except LF in `description`, and an IdP rejects any other member including the former `text`. Existing grants are expected to be migrated (first non-empty line to `title`, the rest to `description`).
+
 ## 2026-10-07
 
 - Add the optional display-only `request.batch` grouping (`id`, `title`, `size`) to grant requests, the `batch` list filter and the `openape_grant_batch_supported` discovery flag. Batches never change the authorization semantics of their members; members must be uniform `once` grants of one audience and target host. Batch operations are authorized per operation like the single-grant endpoints.
