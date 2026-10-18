@@ -43,16 +43,31 @@
       "enum": [
         "connection",
         "create",
+        "authorize",
         "get",
         "token"
       ]
     },
     "request": {
-      "$ref": "grant-request.json"
+      "type": "object"
     },
     "grant_id": {
       "type": "string",
       "format": "uuid"
+    },
+    "requester_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "allOf": [
+        {
+          "pattern": "\\S"
+        },
+        {
+          "not": { "pattern": "[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]" }
+        }
+      ],
+      "description": "Verified broker-registered agent display name; presentation only, at most 120 Unicode code points and nonempty after trimming. Control, format and line/paragraph separator characters are forbidden."
     }
   },
   "required": [
@@ -96,6 +111,11 @@
               "required": [
                 "grant_id"
               ]
+            },
+            {
+              "required": [
+                "requester_name"
+              ]
             }
           ]
         }
@@ -111,7 +131,10 @@
       "if": {
         "properties": {
           "operation": {
-            "const": "create"
+            "enum": [
+              "create",
+              "authorize"
+            ]
           }
         }
       },
@@ -154,6 +177,38 @@
           "required": [
             "grant_id"
           ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "create"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "request": {
+            "$ref": "grant-request.json"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "authorize"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "request": {
+            "$ref": "program-authorize-request.json"
+          }
         }
       }
     }

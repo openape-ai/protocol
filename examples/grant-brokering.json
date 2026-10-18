@@ -32,7 +32,8 @@
       "permissions": [
         "command:printf"
       ]
-    }
+    },
+    "requester_name": "Invoice Assistant"
   },
   "get": {
     "iss": "https://pods.example.com",
@@ -45,7 +46,8 @@
     "owner": "alice@example.com",
     "key_id": "example-public-key-fingerprint",
     "operation": "get",
-    "grant_id": "9b52326a-634d-4a95-894a-fc3b56bb2f3f"
+    "grant_id": "9b52326a-634d-4a95-894a-fc3b56bb2f3f",
+    "requester_name": "Invoice Assistant"
   },
   "token": {
     "iss": "https://pods.example.com",
@@ -58,7 +60,8 @@
     "owner": "alice@example.com",
     "key_id": "example-public-key-fingerprint",
     "operation": "token",
-    "grant_id": "9b52326a-634d-4a95-894a-fc3b56bb2f3f"
+    "grant_id": "9b52326a-634d-4a95-894a-fc3b56bb2f3f",
+    "requester_name": "Invoice Assistant"
   },
   "connection": {
     "iss": "https://pods.example.com",
@@ -94,7 +97,8 @@
       "broker_issuer": "https://pods.example.com",
       "agent_issuer": "https://pods.example.com",
       "owner": "alice@example.com",
-      "key_id": "example-public-key-fingerprint"
+      "key_id": "example-public-key-fingerprint",
+      "requester_name": "Invoice Assistant"
     }
   },
   "authorization": {
@@ -121,6 +125,38 @@
       "agent_issuer": "https://pods.example.com",
       "owner": "alice@example.com",
       "key_id": "example-public-key-fingerprint"
+    }
+  },
+  "decision_discovery_extension": {
+    "openape_broker_requester_name_supported": true
+  },
+  "authorize": {
+    "iss": "https://pods.example.com",
+    "sub": "invoice@pods.example.com",
+    "aud": "https://id.example.com",
+    "iat": 1789812000,
+    "exp": 1789812060,
+    "jti": "988e3377-e004-4fef-aa5f-f7e0ca228ef7",
+    "connection_id": "81eec0d9-2c19-4ef9-a0cc-5cfa72253d01",
+    "owner": "alice@example.com",
+    "key_id": "example-public-key-fingerprint",
+    "operation": "authorize",
+    "requester_name": "Invoice Assistant",
+    "request": {
+      "target_host": "owner-laptop",
+      "audience": "shapes",
+      "program": {
+        "name": "printf",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "argv": [
+        "invoice-ready"
+      ],
+      "grant_type": "once",
+      "summary": {
+        "title": "Prepare invoice status",
+        "description": "Print a synthetic status message."
+      }
     }
   }
 }

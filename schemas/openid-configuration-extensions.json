@@ -90,6 +90,10 @@
     "openape_agent_domain": {
       "type": "string",
       "minLength": 1
+    },
+    "openape_broker_requester_name_supported": {
+      "type": "boolean",
+      "description": "Whether the decision provider accepts verified display-only requester_name on signed non-connection broker requests. Brokers send it only when this field is exactly true; missing or false retains legacy behavior."
     }
   },
   "required": ["ddisa_version", "ddisa_auth_methods_supported"],

@@ -26,6 +26,7 @@ The decision provider advertises these fields in its OIDC discovery document:
 | `openape_grant_brokering_version` | `"1.0"` |
 | `openape_broker_connections_endpoint` | Owner-authenticated connection API base URL |
 | `openape_brokered_grants_endpoint` | Signed broker request API URL |
+| `openape_broker_requester_name_supported` | Optional boolean; exactly `true` advertises the display-name extension in §5.1 |
 
 The agent provider advertises:
 
@@ -90,9 +91,9 @@ The assertion has protected `typ: "openape-broker-request+jwt"`, EdDSA signature
 | `jti` | Unique request identifier, scoped to broker and connection |
 | `connection_id` | Owner-authorized connection |
 | `owner` | Human subject at the decision provider |
-| `operation` | `connection`, `create`, `get`, or `token` |
+| `operation` | `connection`, `create`, `authorize`, `get`, or `token` |
 | `key_id` | Agent public-key identifier; required except for `connection` |
-| `request` | Original Grants request; present only for `create` |
+| `request` | Grants request for `create`, or one program call for `authorize`; absent otherwise |
 | `grant_id` | Grant ID; present only for `get` and `token` |
 
 The decision provider MUST validate the exact assertion type, algorithm, audience, lifetime and signature using the broker's DDISA-authorized JWKS. It MUST look up the connection, check active state, exact owner, broker issuer and agent domain, and reject unknown operation/claim combinations. The entire grant request is inside the signature. Body fields outside the assertion MUST NOT override it.
@@ -104,6 +105,40 @@ Each assertion `jti` MUST be atomically accepted once. Retries with the same ass
 `create` returns a pending Grant object. This version MUST NOT apply generic auto-approval, local-user shortcuts or broad existing standing grants to brokered requests. Reusable grants require explicit human approval of that individual grant. Future policy profiles may add scoped automatic decisions.
 
 `get` returns the matching Grant object. `token` returns the original decision-provider `{ "authz_jwt", "grant" }` only for an approved, currently authorized grant. The broker MUST NOT re-sign the returned authorization as its own decision.
+
+### 5.1 Negotiated registered requester display name
+
+A decision provider MAY advertise `openape_broker_requester_name_supported: true` when it implements this extension. The broker MUST include optional top-level `requester_name` only when the verified decision-provider discovery value is exactly `true`; missing or `false` means it MUST omit the field. This preserves interoperability with older strict assertion receivers. The flag adds presentation metadata support, not an access capability.
+
+`requester_name` MAY appear on signed `create`, `authorize`, `get` and `token` assertions and MUST NOT appear on `connection`. It is not a member of the agent-supplied `request` or an unsigned endpoint body. The broker MUST obtain it from the already authenticated active agent's registered local user and matching active key, under the same immutable issuer/subject/owner/connection binding used for the operation. It MUST NOT sign an agent-provided display name as registered identity, substitute the broker's service name, or perform an unauthenticated directory lookup to fill a missing name. If no valid registered name is available, it MUST omit the field.
+
+The broker MUST first validate the raw registered value as a string of at most 120 Unicode code points, nonempty after trimming and without any Unicode Cc, Cf, Zl or Zp character; LF is also forbidden. The raw limit includes surrounding padding. It MUST then trim the valid name before signing it. An invalid existing registration name MUST cause omission of the optional name, not failure of the otherwise authorized operation. The receiver MUST validate the raw signed claim with the same bounds before normalizing it by trimming for display/storage; an invalid signed claim MUST be rejected, not silently omitted. The existing assertion signature, issuer/domain, owner, connection, agent and key checks MUST all succeed before the receiver treats the name as verified broker-registered display context. An invalid name is `broker_request_invalid`; it MUST NOT trigger an identity fallback.
+
+A supporting receiver MAY store the verified value in Grant `brokered.requester_name` at creation and refresh it during a subsequent authenticated broker operation only after the operation's full original binding matches that Grant. Refresh changes presentation metadata only: it MUST NOT change request contents, owner, agent, issuer, key, connection, decision/status, validity or consumption state. A name change MUST NOT require or authorize rebinding. Missing names remain optional, and missing broker traffic MUST NOT be replaced by a background unsigned directory lookup or a fabricated name.
+
+The display name MUST NOT participate in binding equality, grant matching, policy widening, authorization or executor trust. The decision provider MUST omit `requester_name` from AuthZ-JWTs and derived command tokens, including their `brokered` objects; §6's immutable authorization provenance is unchanged. An approval UI MAY show this verified name beside the stable issuer/subject identity, with broker provenance, and MUST retain an honest absent-name fallback.
+
+### 5.2 Existing per-call `authorize` operation
+
+`authorize` carries one program call in `request`, with agent `sub` and `key_id` and no `grant_id`. This section aligns the formal schema with the already implemented operation; it does not enable new authority or change connection, replay, signature or owner-binding requirements. The same verified display metadata extension in §5.1 applies.
+
+The request is a strict object with only these fields:
+
+| Field | Contract |
+|---|---|
+| `target_host` | Required nonempty string, no NUL, at most 2048 UTF-16 code units |
+| `audience` | Required nonempty string, no NUL, at most 256 UTF-16 code units |
+| `program` | Required strict `{ name, sha256 }`; `name` is nonempty, no NUL or `/`, neither `.` nor `..`, at most 255 UTF-16 code units; `sha256` is exactly 64 lowercase hexadecimal characters |
+| `argv` | Required array of at most 256 strings without NUL, excluding the executable; an empty array is allowed |
+| `files` | Optional array of 1–64 strict `{ path, sha256 }` content bindings; absolute `/` paths without NUL/CR/LF, at most 4096 UTF-16 code units; unique paths and 64 lowercase hexadecimal hash characters |
+| `grant_type` | Optional `always` or `once`, default `always`; `timed` is not accepted |
+| `summary`, `batch` | Optional existing Grants presentation/group metadata with the same validation |
+
+The existing direct agent-facing HTTP API limits its request body to 64 KiB of UTF-8; the broker operation retains its existing assertion-envelope limit rather than acquiring a new independent byte limit from this schema. Runtime validation MUST additionally enforce the stated UTF-16 code-unit bounds and reject duplicate file paths even when hashes differ; JSON Schema `maxLength` counts Unicode code points and is only a coarse bound for these existing fields. File bindings are normalized by sorting by path. Unknown fields, including caller-supplied `authorization_details`, `execution_context`, `requester` or display metadata inside `request`, MUST be refused. The broker assertion still observes its existing overall envelope limit.
+
+The decision provider MUST resolve the executable/argv/file call using its own protected program policy and retain exact program/file/argument bindings. It MAY reuse only a covering grant of the same original brokered identity binding; the brokered path MUST NOT use local standing-grant shortcuts or pre-approval hooks. A matching pending decision is returned; the newest matching denial or revocation is refused; otherwise a new pending human decision is created. The name extension MUST NOT affect any of these results.
+
+The result is the existing typed response: HTTP 200 `{ state: "approved", grant_id, authz_jwt, expires_at }`, HTTP 202 `{ state: "pending", grant_id, approval_url }`, or HTTP 403 `{ state: "denied" | "revoked", grant_id }`. The returned command token retains the existing decision-provider authorization/bindings and excludes display-only names. This operation does not authorize the broker to decide for the owner.
 
 ## 6. Grant provenance and decision routing
 
@@ -119,11 +154,11 @@ Brokered Grant objects carry a decision-provider-generated `brokered` object:
 }
 ```
 
-The requester remains the agent. The owner is interpreted under the grant's decision issuer; in persisted Grant records that issuer is the storing provider. The connection ID and provenance are immutable and MUST NOT be accepted as unauthenticated input.
+The requester remains the agent. The owner is interpreted under the grant's decision issuer; in persisted Grant records that issuer is the storing provider. The connection ID and authorization provenance are immutable and MUST NOT be accepted as unauthenticated input. A stored Grant MAY additionally contain the negotiated `brokered.requester_name` display field described in §5.1; only that presentation field may be refreshed without changing authorization provenance.
 
 List, notification, detail, approval, denial, revocation, token and consume paths MUST resolve brokered ownership from this provenance and its connection rather than a local requester user row. Owner lookup MUST NOT fall back to an unrelated same-email local agent. Only the named, active human owner may approve, deny or revoke. The broker may submit/read but MUST NOT decide. The approval UI MUST distinguish owner, agent and broker, and display the actual action, target and requested duration.
 
-The decision provider signs the ordinary AuthZ-JWT with `iss` equal to itself, `sub` equal to the external agent, and `decided_by` equal to the approving owner. It includes the complete `brokered` object. All existing audience, host, command, adapter, lifetime and grant-type rules apply. The signing rule in Grants §6.3 is unchanged. An AuthZ-JWT is an authorization statement, not an identity assertion for the agent's domain.
+The decision provider signs the ordinary AuthZ-JWT with `iss` equal to itself, `sub` equal to the external agent, and `decided_by` equal to the approving owner. It includes the complete immutable `brokered` authorization provenance (`connection_id`, `broker_issuer`, `agent_issuer`, `owner`, `key_id`), omitting the display-only `requester_name` extension. All existing audience, host, command, adapter, lifetime and grant-type rules apply. The signing rule in Grants §6.3 is unchanged. An AuthZ-JWT is an authorization statement, not an identity assertion for the agent's domain.
 
 ## 7. Execution, consumption and failures
 
@@ -141,4 +176,4 @@ Implementations MUST advertise this profile only when its durable atomic connect
 
 Use existing RFC 7807 errors plus `broker_connection_required`, `broker_connection_revoked`, `broker_identity_mismatch`, `broker_request_replayed`, `broker_request_invalid` and `broker_unavailable` under `https://openape.org/errors/`. Authentication errors use 401, authorization/connection errors 403, replay 409, invalid fields 400, and unavailable dependencies 503.
 
-Conforming implementations MUST demonstrate: two distinct issuer keys; one owner consent authorizing multiple agents without local decision-provider agent accounts; rejection of foreign owners/domains, wrong audience/type/signature, assertion replay, agent/key substitution, broker self-approval and altered actions; failure after connection revocation; no revival after reconnect; exactly one successful consumption under concurrent one-shot attempts; correct owner inbox/notification routing; unchanged direct grants. These checks MUST use isolated identities and harmless commands.
+Conforming implementations MUST demonstrate: two distinct issuer keys; one owner consent authorizing multiple agents without local decision-provider agent accounts; rejection of foreign owners/domains, wrong audience/type/signature, assertion replay, agent/key substitution, broker self-approval and altered actions; failure after connection revocation; no revival after reconnect; exactly one successful consumption under concurrent one-shot attempts; correct owner inbox/notification routing; unchanged direct grants. These checks MUST use isolated identities and harmless commands. Implementations advertising the display-name extension MUST additionally demonstrate verified registered-name propagation and matching-identity refresh, refusal of invalid/unsigned or `connection` names, no refresh on a mismatched binding, unchanged decision/authorization state and token provenance, and omission of the new claim for peers whose capability is absent or false.
