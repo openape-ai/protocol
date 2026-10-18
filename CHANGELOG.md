@@ -2,6 +2,9 @@
 
 ## 2026-10-18
 
+- Align the broker assertion schema and specification with the existing `authorize` per-call operation and strict program request bounds. This documents existing implementation behavior rather than enabling a new authorization operation.
+- Add negotiated verified broker-registered `requester_name` on signed non-connection broker assertions and stored Grant display metadata. The optional discovery flag `openape_broker_requester_name_supported` prevents sending new claims to older strict peers. Names are bounded, presentation-only and excluded from authorization/token provenance and binding equality; no requester-written or unsigned identity is trusted.
+
 - Add optional requester-authored `batch.description` (at most 2000 Unicode code points, LF preserved, other Cc/Cf/Zl/Zp characters rejected). Members share an identical description, including whether it is present. The field is presentation-only; legacy batches without it and per-member authorization/decision semantics remain unchanged.
 
 ## 2026-10-14
