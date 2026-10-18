@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-18
+
+- Add optional requester-authored `batch.description` (at most 2000 Unicode code points, LF preserved, other Cc/Cf/Zl/Zp characters rejected). Members share an identical description, including whether it is present. The field is presentation-only; legacy batches without it and per-member authorization/decision semantics remain unchanged.
+
 ## 2026-10-14
 
 - Replace the grant request `summary` member `text` with `title` (REQUIRED, one line, 1–120 characters), `description` (at most 2000 characters, line breaks kept) and `origin` (one line, at most 120 characters, set by the requester's runtime); `link` is now limited to 2048 characters. Unicode control, format and line/paragraph separator characters are refused in every member except LF in `description`, and an IdP rejects any other member including the former `text`. Existing grants are expected to be migrated (first non-empty line to `title`, the rest to `description`).
