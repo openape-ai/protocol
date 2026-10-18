@@ -12,7 +12,9 @@ independent grant; `batch` only groups them for display.
 ## Step 1: Create the members
 
 The agent creates one grant per item with the same `batch.id`. Only the first
-request is shown; the other two differ in `command` and `summary`.
+request is shown; the other two differ in `command` and `summary`. All three
+share the exact `batch.description`; the field is optional, so legacy requests
+may omit it on every member.
 
 ```http
 POST /api/grants HTTP/1.1
@@ -29,7 +31,7 @@ Content-Type: application/json
   "command": ["mail-archive", "move", "{\"message\":\"m-101\",\"digest\":\"SHA-256:5d1c…\"}"],
   "summary": { "title": "\"Newsletter XY\" <news@xy.example> – What's new", "origin": "Newsletter archive" },
   "waits_until": 1791345600,
-  "batch": { "id": "b-20261007-0900", "title": "Newsletters, October 7", "size": 3 }
+  "batch": { "id": "b-20261007-0900", "title": "Newsletters, October 7", "description": "Review these newsletters and choose which messages to archive once.", "size": 3 }
 }
 ```
 
@@ -44,9 +46,9 @@ Authorization: Bearer <agent-token>
 ```json
 {
   "data": [
-    { "id": "g-3", "status": "pending", "request": { "batch": { "id": "b-20261007-0900", "title": "Newsletters, October 7", "size": 3 } } },
-    { "id": "g-2", "status": "pending", "request": { "batch": { "id": "b-20261007-0900", "title": "Newsletters, October 7", "size": 3 } } },
-    { "id": "g-1", "status": "pending", "request": { "batch": { "id": "b-20261007-0900", "title": "Newsletters, October 7", "size": 3 } } }
+    { "id": "g-3", "status": "pending", "request": { "batch": { "id": "b-20261007-0900", "title": "Newsletters, October 7", "description": "Review these newsletters and choose which messages to archive once.", "size": 3 } } },
+    { "id": "g-2", "status": "pending", "request": { "batch": { "id": "b-20261007-0900", "title": "Newsletters, October 7", "description": "Review these newsletters and choose which messages to archive once.", "size": 3 } } },
+    { "id": "g-1", "status": "pending", "request": { "batch": { "id": "b-20261007-0900", "title": "Newsletters, October 7", "description": "Review these newsletters and choose which messages to archive once.", "size": 3 } } }
   ],
   "pagination": { "cursor": null, "has_more": false }
 }
@@ -54,8 +56,11 @@ Authorization: Bearer <agent-token>
 
 ## Step 3: Decide the batch
 
-The approval UI shows one card with a checkbox per member. Alice keeps two
-members selected and confirms; the UI denies the unselected member.
+The approval UI shows the group title and description as the agent's own
+statements, alongside one checkbox per member and access to each member's
+authoritative content. Alice keeps two members selected and confirms; the UI
+explicitly previews two approvals and one denial, then denies the unselected
+member. The group description never changes what any member authorizes.
 
 ```http
 POST /api/grants/batch HTTP/1.1

@@ -164,6 +164,12 @@
           "maxLength": 200,
           "description": "The requester's own title for the batch."
         },
+        "description": {
+          "type": "string",
+          "maxLength": 2000,
+          "pattern": "^(?:\\n|[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}])*$",
+          "description": "The requester's own description of the batch. At most 2000 Unicode code points; LF is significant. Identical across members, including whether it is present. Presentation only."
+        },
         "size": {
           "type": "integer",
           "minimum": 1,

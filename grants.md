@@ -177,7 +177,7 @@ The `request` object describes what is being requested.
 | `reason` | OPTIONAL | string | Human-readable reason for the request. |
 | `summary` | OPTIONAL | object | The requester's own account of what the request is about, for display in approval UIs. Contains `title` (REQUIRED), `description`, `origin` and `link` (all OPTIONAL); see *Request summary* below. |
 | `waits_until` | OPTIONAL | number | Unix timestamp until which the requester will wait for a decision. |
-| `batch` | OPTIONAL | object | Display grouping for grants the requester submits for a joint decision. Contains `id` (REQUIRED, string, 1–128 characters from `A-Z a-z 0-9 . _ : -`), `title` (OPTIONAL, string, at most 200 characters) and `size` (OPTIONAL, integer 1–100, the number of grants the requester intends to submit under this `id`). |
+| `batch` | OPTIONAL | object | Display grouping for grants the requester submits for a joint decision. Contains `id` (REQUIRED, string, 1–128 characters from `A-Z a-z 0-9 . _ : -`), `title` (OPTIONAL, string, at most 200 characters), `description` (OPTIONAL, string, at most 2000 Unicode code points; see *Request batches* below) and `size` (OPTIONAL, integer 1–100, the number of grants the requester intends to submit under this `id`). |
 | `run_as` | OPTIONAL | string | Execute as this user identity. |
 | `delegator` | OPTIONAL | string | Who is being acted on behalf of (delegation grants only). |
 | `delegate` | OPTIONAL | string | Who is allowed to act (delegation grants only). |
@@ -226,15 +226,29 @@ grants of different requesters.
 A joint decision must not hide a lasting or differently scoped grant behind a
 harmless row. A batch member MUST therefore be a `once` grant without `run_as`,
 `delegator`, `delegate` or `scopes`, and MUST share `audience`, `target_host`,
-`waits_until`, `batch.title` and `batch.size` with the members already
-submitted under the same `requester` and `batch.id`. An IdP MUST reject a
+`waits_until`, `batch.title`, `batch.description` and `batch.size` with the
+members already submitted under the same `requester` and `batch.id`.
+The description MUST be identical across members, including whether it is
+present; omitting it on every member remains valid. An IdP MUST reject a
 member that violates this, and MUST reject further members once `size`
 members exist. Approval UIs MUST show the shared audience and target host and
 SHOULD offer any member that nevertheless differs only in its single-grant
-view. `batch.title` is, like `summary`, the
-requester's own statement and MUST be presented as such. An approval UI MAY
-present the members as one decision with per-member selection; it MUST show
-each member's `summary` when present and MUST offer access to each member's
+view.
+
+`batch.description` is optional requester-authored context for the group. Its
+length counts Unicode code points and MUST NOT exceed 2000. LF (U+000A) is
+allowed and SHOULD be preserved when displayed; every other character in
+Unicode general categories Cc, Cf, Zl and Zp is forbidden. An IdP MUST reject
+with `400` a request whose `batch.description` violates these rules. Like
+`summary`, `batch.title` and `batch.description` are the requester's own
+statements and MUST be presented as such; they are not verified facts and
+MUST NOT replace the authoritative content of any member. When no description
+is supplied, an approval UI MAY show neutral selection guidance or omit the
+group description, but MUST NOT present an inferred purpose as the
+requester's statement.
+
+An approval UI MAY present the members as one decision with per-member
+selection; it MUST show each member's `summary` when present and MUST offer access to each member's
 authoritative content (`command`, `permissions`, `authorization_details`).
 When fewer than `size` members are visible, approval UIs SHOULD say so. A
 joint decision is expressed through [Batch Operations](#410-batch-operations),
