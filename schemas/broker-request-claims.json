@@ -64,7 +64,7 @@
           "pattern": "\\S"
         },
         {
-          "pattern": "^[^\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]+$"
+          "not": { "pattern": "[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]" }
         }
       ],
       "description": "Verified broker-registered agent display name; presentation only, at most 120 Unicode code points and nonempty after trimming. Control, format and line/paragraph separator characters are forbidden."
