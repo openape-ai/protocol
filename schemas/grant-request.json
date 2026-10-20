@@ -212,6 +212,13 @@
       "required": ["delegate", "delegation_grant"],
       "additionalProperties": false
     },
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "\\S",
+      "description": "Opaque identity; runtime must enforce at most 512 UTF-8 bytes and reject Unicode Cc, Cf and Cs. See grants.md request references."
+    },
     "scopes": {
       "type": "array",
       "items": { "type": "string" },
@@ -225,5 +232,56 @@
   "then": {
     "required": ["requester", "target_host", "audience", "grant_type", "duration"]
   },
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "reference"
+        ]
+      },
+      "then": {
+        "properties": {
+          "grant_type": {
+            "const": "once"
+          },
+          "command": {
+            "minItems": 1
+          }
+        },
+        "required": [
+          "command"
+        ],
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "duration"
+              ]
+            },
+            {
+              "required": [
+                "run_as"
+              ]
+            },
+            {
+              "required": [
+                "delegator"
+              ]
+            },
+            {
+              "required": [
+                "delegate"
+              ]
+            },
+            {
+              "required": [
+                "scopes"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
   "additionalProperties": false
 }

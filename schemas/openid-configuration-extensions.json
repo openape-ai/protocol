@@ -91,6 +91,11 @@
       "type": "string",
       "minLength": 1
     },
+    "openape_grant_reference_supported": {
+      "type": "boolean",
+      "default": false,
+      "description": "Atomic scoped reference creation, terminal retention and authorized non-consuming lookup."
+    },
     "openape_broker_requester_name_supported": {
       "type": "boolean",
       "description": "Whether the decision provider accepts verified display-only requester_name on signed non-connection broker requests. Brokers send it only when this field is exactly true; missing or false retains legacy behavior."

@@ -105,6 +105,9 @@
     },
     "batch": {
       "$ref": "grant-request.json#/properties/batch"
+    },
+    "reference": {
+      "$ref": "grant-request.json#/properties/reference"
     }
   },
   "required": [
@@ -112,5 +115,24 @@
     "audience",
     "program",
     "argv"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "reference"
+        ]
+      },
+      "then": {
+        "required": [
+          "grant_type"
+        ],
+        "properties": {
+          "grant_type": {
+            "const": "once"
+          }
+        }
+      }
+    }
   ]
 }
