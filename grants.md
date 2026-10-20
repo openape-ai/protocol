@@ -92,6 +92,7 @@ An IdP that supports the Grants Protocol MUST advertise its support via the OIDC
 | `openape_grant_types_supported` | REQUIRED | string[] | Supported grant types. MUST include at least one of: `"once"`, `"timed"`, `"always"`. |
 | `openape_grant_categories_supported` | OPTIONAL | string[] | Supported grant categories. Values: `"command"`, `"delegation"`, `"standing"`. Default: `["command"]`. |
 | `authorization_details_types_supported` | OPTIONAL | string[] | Supported RFC 9396 authorization detail types. Implementations supporting structured CLI grants SHOULD include `"openape_cli"`. |
+| `openape_grant_reference_supported` | OPTIONAL | boolean | `true` when the IdP supports atomic reference creation, retained terminal identities and authorized lookup. Default: `false`. |
 | `openape_grant_batch_supported` | OPTIONAL | boolean | `true` if the IdP stores `request.batch` and supports the `batch` list filter ([Section 3.4](#34-grant-request), [Section 4.2](#42-list-grants)). Default: `false`. |
 
 **Example:**
@@ -177,6 +178,7 @@ The `request` object describes what is being requested.
 | `reason` | OPTIONAL | string | Human-readable reason for the request. |
 | `summary` | OPTIONAL | object | The requester's own account of what the request is about, for display in approval UIs. Contains `title` (REQUIRED), `description`, `origin` and `link` (all OPTIONAL); see *Request summary* below. |
 | `waits_until` | OPTIONAL | number | Unix timestamp until which the requester will wait for a decision. |
+| `reference` | OPTIONAL | string | Opaque client-selected identity for an immutable exact `once` command request; see *Request references* below. |
 | `batch` | OPTIONAL | object | Display grouping for grants the requester submits for a joint decision. Contains `id` (REQUIRED, string, 1–128 characters from `A-Z a-z 0-9 . _ : -`), `title` (OPTIONAL, string, at most 200 characters), `description` (OPTIONAL, string, at most 2000 Unicode code points; see *Request batches* below) and `size` (OPTIONAL, integer 1–100, the number of grants the requester intends to submit under this `id`). |
 | `run_as` | OPTIONAL | string | Execute as this user identity. |
 | `delegator` | OPTIONAL | string | Who is being acted on behalf of (delegation grants only). |
@@ -255,6 +257,54 @@ joint decision is expressed through [Batch Operations](#410-batch-operations),
 one operation per member. Standing grants apply to each member as to any other
 grant. An IdP that does not support batches ignores the field and presents the
 members as individual grants.
+
+**Request references.** A supporting IdP MUST accept an optional `reference`
+containing 1–512 UTF-8 bytes, nonempty after trimming, without Unicode Cc, Cf or
+Cs characters. It MUST preserve the string exactly and MUST NOT interpret any
+client naming convention. A reference is neither permission nor a grouping ID.
+Clients MUST verify `openape_grant_reference_supported` before relying on it.
+
+The initial reference contract applies to exact command requests with
+`grant_type: "once"`, a nonempty command array, and no duration, run-as or
+delegation fields. Unreferenced requests retain their existing behavior. The
+IdP MUST atomically bind a reference to one Grant within the authenticated
+requester and direct/broker authority boundary. Broker authority includes the
+connection, owner, broker issuer, agent issuer and agent key; display names do
+not contribute. Concurrent submissions and retries after a lost response MUST
+resolve to the same Grant ID. A uniqueness constraint and transactional
+insert-or-read MUST enforce this; client-side read-then-create is insufficient.
+
+The binding comprises the canonical authorization request: target, audience,
+command, permissions and authorization details, execution/content binding and
+requested lifetime/deadline semantics. Object key order is insignificant;
+array order is preserved. `summary`, `batch`, `reason`, `reference` and
+server-recorded `submitted_by` are excluded. Retrying an equal binding returns
+the original Grant and current state; a changed binding returns `409` without
+creating or widening permission. Original presentation and batch membership
+are retained. Approval MUST NOT widen or change a referenced request's
+single-use binding.
+
+Creation/read-by-reference MUST NOT issue a command token, consume permission
+or execute an operation. A new request returns `201`; an existing request
+returns `200`, including `pending`, `approved`, `denied`, `revoked`, `expired`
+and `used`. Referenced terminal records and uniqueness bindings MUST remain
+retained. Expiration, another run, another batch or another presentation MUST
+NOT renew the reference. No references are inferred for legacy grants.
+
+The execution authorization path MUST resolve the reference before generic
+covering-grant or new-request logic. Only that referenced approved grant can
+supply its command token; pending remains pending and terminal states MUST
+refuse execution without a replacement grant. `used` records consumption of
+authority, not success of the external operation. Clients retain their own
+application's effect reconciliation. A new semantic operation requires a
+new deliberately chosen reference.
+
+A stable `batch.id` MAY collect requests across runs; omit `size` for an open
+collection. Each reference still identifies one operation. Review UIs SHOULD
+load the complete pending collection separately from paginated history, offer
+explicit refresh while preserving choices, and leave newly received entries
+unselected. Submission MUST freeze exactly the reviewed operation IDs; retry
+only unresolved operations, never include later arrivals implicitly.
 
 ### 3.5 Structured CLI Authorization Details
 
@@ -346,6 +396,7 @@ Returns grants visible to the authenticated user.
 | `role` | string | Filter by the authenticated user's role: `"requester"`, `"approver"`, `"admin"`. |
 | `status` | string | Filter by grant status. |
 | `type` | string | Filter by grant category (`"command"`, `"delegation"`). |
+| `reference` | string | Exact reference filter, with `requester` and the normal visibility checks. A broker-mediated lookup is confined to its signed requester and binding. No match returns an empty result; lookup never consumes permission. |
 | `batch` | string | Filter by `request.batch.id`. Only meaningful together with `requester`, because batch identifiers are scoped to their requester. Supported when `openape_grant_batch_supported` is `true`; clients MUST NOT rely on it otherwise and poll the members individually ([Section 4.3](#43-get-grant)). |
 | `limit` | number | Maximum number of results. Default: `20`. Maximum: `100`. |
 | `cursor` | string | Cursor for pagination (see [Section 5](#5-pagination)). |
@@ -586,6 +637,7 @@ Paginated responses MUST include pagination metadata:
 }
 ```
 
+- Ordering MUST be stable across equal timestamps, for example by `(created_at, id)`. A timestamp alone MUST NOT skip members with the same creation time.
 - `cursor`: Opaque string for the next page. `null` if no more results.
 - `has_more`: Boolean indicating whether more results exist.
 

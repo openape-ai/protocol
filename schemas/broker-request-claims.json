@@ -64,10 +64,15 @@
           "pattern": "\\S"
         },
         {
-          "not": { "pattern": "[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]" }
+          "not": {
+            "pattern": "[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]"
+          }
         }
       ],
       "description": "Verified broker-registered agent display name; presentation only, at most 120 Unicode code points and nonempty after trimming. Control, format and line/paragraph separator characters are forbidden."
+    },
+    "reference": {
+      "$ref": "grant-request.json#/properties/reference"
     }
   },
   "required": [
@@ -116,6 +121,11 @@
               "required": [
                 "requester_name"
               ]
+            },
+            {
+              "required": [
+                "reference"
+              ]
             }
           ]
         }
@@ -160,22 +170,38 @@
       "if": {
         "properties": {
           "operation": {
-            "enum": [
-              "get",
-              "token"
-            ]
+            "const": "get"
           }
         }
       },
       "then": {
-        "required": [
-          "grant_id"
+        "oneOf": [
+          {
+            "required": [
+              "grant_id"
+            ],
+            "not": {
+              "required": [
+                "reference"
+              ]
+            }
+          },
+          {
+            "required": [
+              "reference"
+            ],
+            "not": {
+              "required": [
+                "grant_id"
+              ]
+            }
+          }
         ]
       },
       "else": {
         "not": {
           "required": [
-            "grant_id"
+            "reference"
           ]
         }
       }
@@ -210,6 +236,20 @@
             "$ref": "program-authorize-request.json"
           }
         }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "token"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "grant_id"
+        ]
       }
     }
   ]

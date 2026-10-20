@@ -94,7 +94,8 @@ The assertion has protected `typ: "openape-broker-request+jwt"`, EdDSA signature
 | `operation` | `connection`, `create`, `authorize`, `get`, or `token` |
 | `key_id` | Agent public-key identifier; required except for `connection` |
 | `request` | Grants request for `create`, or one program call for `authorize`; absent otherwise |
-| `grant_id` | Grant ID; present only for `get` and `token` |
+| `grant_id` | Grant ID; required for `token`; for `get`, exactly one of `grant_id` or `reference` |
+| `reference` | Optional opaque grant reference on `get`, mutually exclusive with `grant_id`; absent for other operations |
 
 The decision provider MUST validate the exact assertion type, algorithm, audience, lifetime and signature using the broker's DDISA-authorized JWKS. It MUST look up the connection, check active state, exact owner, broker issuer and agent domain, and reject unknown operation/claim combinations. The entire grant request is inside the signature. Body fields outside the assertion MUST NOT override it.
 
@@ -133,12 +134,33 @@ The request is a strict object with only these fields:
 | `files` | Optional array of 1–64 strict `{ path, sha256 }` content bindings; absolute `/` paths without NUL/CR/LF, at most 4096 UTF-16 code units; unique paths and 64 lowercase hexadecimal hash characters |
 | `grant_type` | Optional `always` or `once`, default `always`; `timed` is not accepted |
 | `summary`, `batch` | Optional existing Grants presentation/group metadata with the same validation |
+| `reference` | Optional opaque reference from the Grants contract; requires explicit `grant_type: "once"` |
 
 The existing direct agent-facing HTTP API limits its request body to 64 KiB of UTF-8; the broker operation retains its existing assertion-envelope limit rather than acquiring a new independent byte limit from this schema. Runtime validation MUST additionally enforce the stated UTF-16 code-unit bounds and reject duplicate file paths even when hashes differ; JSON Schema `maxLength` counts Unicode code points and is only a coarse bound for these existing fields. File bindings are normalized by sorting by path. Unknown fields, including caller-supplied `authorization_details`, `execution_context`, `requester` or display metadata inside `request`, MUST be refused. The broker assertion still observes its existing overall envelope limit.
 
 The decision provider MUST resolve the executable/argv/file call using its own protected program policy and retain exact program/file/argument bindings. It MAY reuse only a covering grant of the same original brokered identity binding; the brokered path MUST NOT use local standing-grant shortcuts or pre-approval hooks. A matching pending decision is returned; the newest matching denial or revocation is refused; otherwise a new pending human decision is created. The name extension MUST NOT affect any of these results.
 
-The result is the existing typed response: HTTP 200 `{ state: "approved", grant_id, authz_jwt, expires_at }`, HTTP 202 `{ state: "pending", grant_id, approval_url }`, or HTTP 403 `{ state: "denied" | "revoked", grant_id }`. The returned command token retains the existing decision-provider authorization/bindings and excludes display-only names. This operation does not authorize the broker to decide for the owner.
+The result is the existing typed response: HTTP 200 `{ state: "approved", grant_id, authz_jwt, expires_at }`, HTTP 202 `{ state: "pending", grant_id, approval_url }`, or HTTP 403 `{ state: "denied" | "revoked" | "expired" | "used", grant_id }`. The returned command token retains the existing decision-provider authorization/bindings and excludes display-only names. This operation does not authorize the broker to decide for the owner.
+
+### 5.3 Reference lookup and retries
+
+When the decision provider advertises `openape_grant_reference_supported`,
+`create` and `authorize` carry the reference inside their signed request.
+`get` may instead carry a signed `reference`, mutually exclusive with
+`grant_id`. Other operations MUST reject a top-level reference. The provider
+MUST verify the same active connection, requester, key and owner binding as a
+lookup by ID; it MUST NOT search other authority namespaces. Return the full
+Grant or JSON `null` when no matching reference exists. This lookup never
+consumes permission. Agent-facing list APIs may relay the result as zero or
+one entry in their existing paginated response.
+
+Referenced `create` returns the existing state without a token. Referenced
+`authorize` follows the Grants reference contract before generic reuse: it
+returns the same pending request, issues a token only from its approved
+single-use grant, or refuses denied/revoked/expired/used with HTTP 403 and the
+original `grant_id`. A binding mismatch is HTTP 409. Unknown reference support
+MUST NOT cause a broker to strip the reference or fall back to an unreferenced
+request.
 
 ## 6. Grant provenance and decision routing
 

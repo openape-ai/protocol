@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-20
+
+- Add optional generic grant references, atomic authority-scoped request deduplication, immutable binding conflicts and terminal retention. Define non-consuming reference lookup, signed broker get-by-reference, explicit support discovery and terminal execution refusal. References remain independent of cross-run batch grouping.
+
 ## 2026-10-18
 
 - Align the broker assertion schema and specification with the existing `authorize` per-call operation and strict program request bounds. This documents existing implementation behavior rather than enabling a new authorization operation.
