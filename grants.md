@@ -93,6 +93,7 @@ An IdP that supports the Grants Protocol MUST advertise its support via the OIDC
 | `openape_grant_categories_supported` | OPTIONAL | string[] | Supported grant categories. Values: `"command"`, `"delegation"`, `"standing"`. Default: `["command"]`. |
 | `authorization_details_types_supported` | OPTIONAL | string[] | Supported RFC 9396 authorization detail types. Implementations supporting structured CLI grants SHOULD include `"openape_cli"`. |
 | `openape_grant_reference_supported` | OPTIONAL | boolean | `true` when the IdP supports atomic reference creation, retained terminal identities and authorized lookup. Default: `false`. |
+| `openape_grant_withdraw_supported` | OPTIONAL | boolean | `true` when the IdP supports requester withdrawal of its own referenced single-use request ([Section 4.11](#411-withdraw-grant-by-reference)). Requires `openape_grant_reference_supported`. Default: `false`. |
 | `openape_grant_batch_supported` | OPTIONAL | boolean | `true` if the IdP stores `request.batch` and supports the `batch` list filter ([Section 3.4](#34-grant-request), [Section 4.2](#42-list-grants)). Default: `false`. |
 
 **Example:**
@@ -125,6 +126,7 @@ A grant represents a permission request and its lifecycle state.
 | `decided_at` | OPTIONAL | number | Unix timestamp (seconds) when the decision was made. |
 | `expires_at` | OPTIONAL | number | Unix timestamp (seconds) when the grant expires. Set for `timed` grants on approval. |
 | `used_at` | OPTIONAL | number | Unix timestamp (seconds) when the grant was consumed. Set for `once` grants on use. |
+| `withdraw_reason` | OPTIONAL | string | The requester's reason when it withdrew its own referenced request ([Section 4.11](#411-withdraw-grant-by-reference)). |
 
 A `standing` grant is a pre-authorization (auto-approval policy): instead of authorizing a single action, it approves matching future `command` requests without per-request human interaction. Incoming requests are evaluated against active standing grants; a match yields an approved grant annotated with `decided_by_standing_grant`.
 
@@ -146,17 +148,22 @@ A `standing` grant is a pre-authorization (auto-approval policy): instead of aut
 | `revoked` | Revoked after approval. | Yes |
 | `expired` | Time-limited grant past its `expires_at`. | Yes |
 | `used` | Single-use grant that has been consumed. | Yes |
+| `withdrawn` | Referenced single-use request withdrawn by its requester before consumption. | Yes |
 
 **State Machine:**
 
 ```
                  +--> denied
                  |
+                 +--> withdrawn  (requester, referenced once only)
+                 |
  pending --------+--> approved --+--> revoked
                                  |
-                                 +--> expired  (auto, timed only)
+                                 +--> expired    (auto, timed only)
                                  |
-                                 +--> used     (auto, once only)
+                                 +--> used       (auto, once only)
+                                 |
+                                 +--> withdrawn  (requester, referenced once, unused)
 ```
 
 ### 3.4 Grant Request
@@ -286,8 +293,8 @@ single-use binding.
 
 Creation/read-by-reference MUST NOT issue a command token, consume permission
 or execute an operation. A new request returns `201`; an existing request
-returns `200`, including `pending`, `approved`, `denied`, `revoked`, `expired`
-and `used`. Referenced terminal records and uniqueness bindings MUST remain
+returns `200`, including `pending`, `approved`, `denied`, `revoked`, `expired`,
+`used` and `withdrawn`. Referenced terminal records and uniqueness bindings MUST remain
 retained. Expiration, another run, another batch or another presentation MUST
 NOT renew the reference. No references are inferred for legacy grants.
 
@@ -609,6 +616,51 @@ an operation the caller is not authorized for fails individually with
 `forbidden`. Approval UIs use this endpoint to decide the members of a
 [request batch](#34-grant-request) in one step, typically approving the
 selected members and denying the rest.
+
+### 4.11 Withdraw Grant by Reference
+
+```
+POST /withdraw
+```
+
+Lets a requester withdraw its own referenced single-use request that it no
+longer needs, for example because the object it concerns has changed or
+disappeared. Supported only when `openape_grant_withdraw_supported` is `true`.
+
+**Request Body:**
+
+| Field | Status | Type | Description |
+|-------|--------|------|-------------|
+| `reference` | REQUIRED | string | Reference of the request, with the same validation as in [Section 3.4](#34-grant-request). |
+| `reason` | OPTIONAL | string | 1–500 characters, nonempty after trimming, without Unicode Cc, Cf, Zl or Zp characters. Shown in grant history and audit; never changes the request. |
+
+**Authorization:** Only the authenticated requester. The IdP MUST resolve the
+reference within the same requester and direct/broker authority boundary used
+to create it ([Section 3.4](#34-grant-request)). It MUST NOT search other
+requesters, connections or keys, and MUST NOT accept a grant ID instead of the
+reference. Approvers, owners and other agents use the existing deny and revoke
+operations instead. A brokered request is withdrawn through the broker
+`withdraw` operation (Grant Brokering §5.4).
+
+**Transition:** In one atomic step, a `pending` grant, or an `approved`
+`once` grant that has not been consumed, becomes `withdrawn` with
+`decided_at` set to the current time. Approval, denial, token issuance and
+consumption of a `withdrawn` grant MUST fail like other terminal states.
+A withdrawn grant MUST NOT appear in pending listings or count towards pending
+limits, and review UIs SHOULD omit it from batch decisions. The reference stays
+bound and is never renewed; an execution request with the same reference is
+refused with HTTP 403 `{ "state": "withdrawn", "grant_id" }`.
+
+**Response:** `200 OK` with one of:
+
+| Body | Meaning |
+|------|---------|
+| `{ "outcome": "withdrawn", "grant_id", "previous_status": "pending" \| "approved" \| "withdrawn" }` | Withdrawn now, or already withdrawn earlier (idempotent repeat; nothing changes). |
+| `{ "outcome": "already_decided", "grant_id", "status": "denied" \| "revoked" \| "expired" \| "used" }` | The request reached another terminal state first; nothing changes. |
+| `{ "outcome": "unknown" }` | The requester has no request with this reference. |
+
+An unknown outcome deliberately does not distinguish requests of other
+requesters from absent references.
 
 ---
 

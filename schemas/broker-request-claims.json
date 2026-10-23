@@ -45,7 +45,8 @@
         "create",
         "authorize",
         "get",
-        "token"
+        "token",
+        "withdraw"
       ]
     },
     "request": {
@@ -73,6 +74,22 @@
     },
     "reference": {
       "$ref": "grant-request.json#/properties/reference"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "allOf": [
+        {
+          "pattern": "\\S"
+        },
+        {
+          "not": {
+            "pattern": "[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]"
+          }
+        }
+      ],
+      "description": "Optional withdrawal reason; only on withdraw. Presentation and audit only; nonempty after trimming, without control, format or line/paragraph separator characters."
     }
   },
   "required": [
@@ -125,6 +142,11 @@
             {
               "required": [
                 "reference"
+              ]
+            },
+            {
+              "required": [
+                "reason"
               ]
             }
           ]
@@ -199,10 +221,29 @@
         ]
       },
       "else": {
-        "not": {
+        "if": {
+          "properties": {
+            "operation": {
+              "const": "withdraw"
+            }
+          }
+        },
+        "then": {
           "required": [
             "reference"
-          ]
+          ],
+          "not": {
+            "required": [
+              "grant_id"
+            ]
+          }
+        },
+        "else": {
+          "not": {
+            "required": [
+              "reference"
+            ]
+          }
         }
       }
     },
@@ -250,6 +291,23 @@
         "required": [
           "grant_id"
         ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "withdraw"
+          }
+        }
+      },
+      "then": {},
+      "else": {
+        "not": {
+          "required": [
+            "reason"
+          ]
+        }
       }
     }
   ]
