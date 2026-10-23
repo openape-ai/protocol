@@ -631,7 +631,7 @@ disappeared. Supported only when `openape_grant_withdraw_supported` is `true`.
 | Field | Status | Type | Description |
 |-------|--------|------|-------------|
 | `reference` | REQUIRED | string | Reference of the request, with the same validation as in [Section 3.4](#34-grant-request). |
-| `reason` | OPTIONAL | string | 1–500 characters without control characters. Shown in grant history and audit; never changes the request. |
+| `reason` | OPTIONAL | string | 1–500 characters, nonempty after trimming, without Unicode Cc, Cf, Zl or Zp characters. Shown in grant history and audit; never changes the request. |
 
 **Authorization:** Only the authenticated requester. The IdP MUST resolve the
 reference within the same requester and direct/broker authority boundary used

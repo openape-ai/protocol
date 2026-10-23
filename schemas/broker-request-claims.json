@@ -79,7 +79,17 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 500,
-      "description": "Optional withdrawal reason; only on withdraw. Presentation and audit only."
+      "allOf": [
+        {
+          "pattern": "\\S"
+        },
+        {
+          "not": {
+            "pattern": "[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]"
+          }
+        }
+      ],
+      "description": "Optional withdrawal reason; only on withdraw. Presentation and audit only; nonempty after trimming, without control, format or line/paragraph separator characters."
     }
   },
   "required": [
