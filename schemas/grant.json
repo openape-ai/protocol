@@ -45,6 +45,10 @@
       "type": "string",
       "minLength": 1,
       "maxLength": 500,
+      "allOf": [
+        { "pattern": "\\S" },
+        { "not": { "pattern": "[\\p{Cc}\\p{Cf}\\p{Zl}\\p{Zp}]" } }
+      ],
       "description": "Requester's optional reason when it withdrew its own referenced request (status withdrawn)."
     },
     "used_at": {
