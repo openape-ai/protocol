@@ -91,11 +91,12 @@ The assertion has protected `typ: "openape-broker-request+jwt"`, EdDSA signature
 | `jti` | Unique request identifier, scoped to broker and connection |
 | `connection_id` | Owner-authorized connection |
 | `owner` | Human subject at the decision provider |
-| `operation` | `connection`, `create`, `authorize`, `get`, or `token` |
+| `operation` | `connection`, `create`, `authorize`, `get`, `token`, or `withdraw` |
 | `key_id` | Agent public-key identifier; required except for `connection` |
 | `request` | Grants request for `create`, or one program call for `authorize`; absent otherwise |
 | `grant_id` | Grant ID; required for `token`; for `get`, exactly one of `grant_id` or `reference` |
-| `reference` | Optional opaque grant reference on `get`, mutually exclusive with `grant_id`; absent for other operations |
+| `reference` | Optional opaque grant reference on `get`, mutually exclusive with `grant_id`; required on `withdraw`; absent for other operations |
+| `reason` | Optional withdrawal reason on `withdraw` (1–500 characters); absent for other operations |
 
 The decision provider MUST validate the exact assertion type, algorithm, audience, lifetime and signature using the broker's DDISA-authorized JWKS. It MUST look up the connection, check active state, exact owner, broker issuer and agent domain, and reject unknown operation/claim combinations. The entire grant request is inside the signature. Body fields outside the assertion MUST NOT override it.
 
@@ -140,14 +141,14 @@ The existing direct agent-facing HTTP API limits its request body to 64 KiB of U
 
 The decision provider MUST resolve the executable/argv/file call using its own protected program policy and retain exact program/file/argument bindings. It MAY reuse only a covering grant of the same original brokered identity binding; the brokered path MUST NOT use local standing-grant shortcuts or pre-approval hooks. A matching pending decision is returned; the newest matching denial or revocation is refused; otherwise a new pending human decision is created. The name extension MUST NOT affect any of these results.
 
-The result is the existing typed response: HTTP 200 `{ state: "approved", grant_id, authz_jwt, expires_at }`, HTTP 202 `{ state: "pending", grant_id, approval_url }`, or HTTP 403 `{ state: "denied" | "revoked" | "expired" | "used", grant_id }`. The returned command token retains the existing decision-provider authorization/bindings and excludes display-only names. This operation does not authorize the broker to decide for the owner.
+The result is the existing typed response: HTTP 200 `{ state: "approved", grant_id, authz_jwt, expires_at }`, HTTP 202 `{ state: "pending", grant_id, approval_url }`, or HTTP 403 `{ state: "denied" | "revoked" | "expired" | "used" | "withdrawn", grant_id }`. The returned command token retains the existing decision-provider authorization/bindings and excludes display-only names. This operation does not authorize the broker to decide for the owner.
 
 ### 5.3 Reference lookup and retries
 
 When the decision provider advertises `openape_grant_reference_supported`,
 `create` and `authorize` carry the reference inside their signed request.
 `get` may instead carry a signed `reference`, mutually exclusive with
-`grant_id`. Other operations MUST reject a top-level reference. The provider
+`grant_id`. `withdraw` (§5.4) requires it. Other operations MUST reject a top-level reference. The provider
 MUST verify the same active connection, requester, key and owner binding as a
 lookup by ID; it MUST NOT search other authority namespaces. Return the full
 Grant or JSON `null` when no matching reference exists. This lookup never
@@ -157,10 +158,29 @@ one entry in their existing paginated response.
 Referenced `create` returns the existing state without a token. Referenced
 `authorize` follows the Grants reference contract before generic reuse: it
 returns the same pending request, issues a token only from its approved
-single-use grant, or refuses denied/revoked/expired/used with HTTP 403 and the
+single-use grant, or refuses denied/revoked/expired/used/withdrawn with HTTP 403 and the
 original `grant_id`. A binding mismatch is HTTP 409. Unknown reference support
 MUST NOT cause a broker to strip the reference or fall back to an unreferenced
 request.
+
+### 5.4 Requester withdrawal
+
+When the decision provider advertises `openape_grant_withdraw_supported`, an
+agent can withdraw its own referenced single-use request through the broker.
+The broker authenticates the agent exactly as for `get` and signs operation
+`withdraw` with the top-level `reference` and optional `reason`; `request` and
+`grant_id` MUST be absent. If the decision provider does not advertise
+support, the broker MUST refuse instead of falling back to a revoke or to an
+owner credential.
+
+The decision provider MUST verify the assertion like every other operation,
+resolve the reference only within the signed requester, connection, owner,
+broker issuer, agent issuer and key binding, and then apply Grants §4.11. It
+returns the same response body. Each state change MUST be audit-associated
+with owner, agent, broker, connection, grant ID and reason; an idempotent
+repeat or an unknown reference changes nothing. Withdrawal removes authority
+only: it is not a decision and MUST NOT approve, deny or revoke on the owner's
+behalf.
 
 ## 6. Grant provenance and decision routing
 
@@ -178,7 +198,7 @@ Brokered Grant objects carry a decision-provider-generated `brokered` object:
 
 The requester remains the agent. The owner is interpreted under the grant's decision issuer; in persisted Grant records that issuer is the storing provider. The connection ID and authorization provenance are immutable and MUST NOT be accepted as unauthenticated input. A stored Grant MAY additionally contain the negotiated `brokered.requester_name` display field described in §5.1; only that presentation field may be refreshed without changing authorization provenance.
 
-List, notification, detail, approval, denial, revocation, token and consume paths MUST resolve brokered ownership from this provenance and its connection rather than a local requester user row. Owner lookup MUST NOT fall back to an unrelated same-email local agent. Only the named, active human owner may approve, deny or revoke. The broker may submit/read but MUST NOT decide. The approval UI MUST distinguish owner, agent and broker, and display the actual action, target and requested duration.
+List, notification, detail, approval, denial, revocation, token and consume paths MUST resolve brokered ownership from this provenance and its connection rather than a local requester user row. Owner lookup MUST NOT fall back to an unrelated same-email local agent. Only the named, active human owner may approve, deny or revoke. The broker may submit/read, and withdraw the agent's own referenced request (§5.4), but MUST NOT decide. The approval UI MUST distinguish owner, agent and broker, and display the actual action, target and requested duration.
 
 The decision provider signs the ordinary AuthZ-JWT with `iss` equal to itself, `sub` equal to the external agent, and `decided_by` equal to the approving owner. It includes the complete immutable `brokered` authorization provenance (`connection_id`, `broker_issuer`, `agent_issuer`, `owner`, `key_id`), omitting the display-only `requester_name` extension. All existing audience, host, command, adapter, lifetime and grant-type rules apply. The signing rule in Grants §6.3 is unchanged. An AuthZ-JWT is an authorization statement, not an identity assertion for the agent's domain.
 
@@ -186,7 +206,7 @@ The decision provider signs the ordinary AuthZ-JWT with `iss` equal to itself, `
 
 The executor MUST have an owner-authorized local binding of human issuer/subject, agent issuer/subject/key, connection and target. Receiving a token MUST NOT create or alter this binding. It MUST verify the original decision-provider signature and exact expected issuer, agent subject, `brokered` provenance, audience, host and command/adapter binding. Trusting any issuer named by an untrusted token is forbidden.
 
-Immediately before execution it MUST check the agent identity/key remains active with its identity provider, and consume/validate the grant directly at the decision provider over authenticated HTTPS. Consume MUST check that the provenance matches the stored grant, the human owner remains active and the broker connection is active, then atomically apply one-shot semantics. Expired, denied, revoked, used, mismatched or unavailable authority MUST prevent execution.
+Immediately before execution it MUST check the agent identity/key remains active with its identity provider, and consume/validate the grant directly at the decision provider over authenticated HTTPS. Consume MUST check that the provenance matches the stored grant, the human owner remains active and the broker connection is active, then atomically apply one-shot semantics. Expired, denied, revoked, used, withdrawn, mismatched or unavailable authority MUST prevent execution.
 
 A plain broker response such as `{ "valid": true }` MUST NOT replace authoritative consumption. The agent-facing API may remain entirely at its broker while the executor performs this independent check internally. Signed, fully relayed consume receipts are outside version 1.
 

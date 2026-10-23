@@ -22,7 +22,7 @@
     },
     "status": {
       "type": "string",
-      "enum": ["pending", "approved", "denied", "revoked", "expired", "used"],
+      "enum": ["pending", "approved", "denied", "revoked", "expired", "used", "withdrawn"],
       "description": "Current grant status."
     },
     "decided_by": {

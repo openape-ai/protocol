@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-23
+
+- Add terminal grant status `withdrawn` and requester withdrawal of its own referenced single-use request (`POST /withdraw`, discovery `openape_grant_withdraw_supported`), including approved but unconsumed grants. Add broker operation `withdraw` with signed reference and optional reason, scoped to the original binding. Withdrawn requests leave pending listings and limits and are never renewed.
+
 ## 2026-10-20
 
 - Add optional generic grant references, atomic authority-scoped request deduplication, immutable binding conflicts and terminal retention. Define non-consuming reference lookup, signed broker get-by-reference, explicit support discovery and terminal execution refusal. References remain independent of cross-run batch grouping.
