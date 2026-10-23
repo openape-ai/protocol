@@ -126,6 +126,7 @@ A grant represents a permission request and its lifecycle state.
 | `decided_at` | OPTIONAL | number | Unix timestamp (seconds) when the decision was made. |
 | `expires_at` | OPTIONAL | number | Unix timestamp (seconds) when the grant expires. Set for `timed` grants on approval. |
 | `used_at` | OPTIONAL | number | Unix timestamp (seconds) when the grant was consumed. Set for `once` grants on use. |
+| `withdraw_reason` | OPTIONAL | string | The requester's reason when it withdrew its own referenced request ([Section 4.11](#411-withdraw-grant-by-reference)). |
 
 A `standing` grant is a pre-authorization (auto-approval policy): instead of authorizing a single action, it approves matching future `command` requests without per-request human interaction. Incoming requests are evaluated against active standing grants; a match yields an approved grant annotated with `decided_by_standing_grant`.
 
